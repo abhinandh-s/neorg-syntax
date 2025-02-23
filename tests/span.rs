@@ -40,42 +40,4 @@ mod test {
             }
         )
     }
-
-    #[test]
-    fn into_lsp_range_test_01() {
-        let input = "this is a string";
-        let span = Span::new(0, input.len());
-        assert_eq!(
-            span.into_lsp_range(input).unwrap(),
-            Range {
-                start: tower_lsp::lsp_types::Position {
-                    line: 1,
-                    character: 1
-                },
-                end: tower_lsp::lsp_types::Position {
-                    line: 1,
-                    character: 16
-                }
-            }
-        )
-    }
-
-    #[test]
-    fn into_lsp_range_test_02() {
-        let input = "this is a string \n and a newline";
-        let span = Span::new(0, input.len());
-        assert_eq!(
-            span.into_lsp_range(input).unwrap(),
-            Range {
-                start: tower_lsp::lsp_types::Position {
-                    line: 1,
-                    character: 1
-                },
-                end: tower_lsp::lsp_types::Position {
-                    line: 2,
-                    character: 14
-                }
-            }
-        )
-    }
 }

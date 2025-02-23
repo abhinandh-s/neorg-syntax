@@ -1,5 +1,7 @@
+pub mod ast;
 pub mod parser;
 pub mod lexer;
+pub mod node;
 pub mod span;
 pub mod kind;
 

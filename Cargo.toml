@@ -1,7 +1,7 @@
 [package]
 name = "neorg-syntax"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 authors = ["Abhinandh S <abhinandhsuby@proton.me>"]
 description = "A markdown laguage"

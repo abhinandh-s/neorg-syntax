@@ -8,8 +8,8 @@ use crate::NeoChar as _;
 
 pub struct Lexer {
     source: Rope,
-    start: usize,   // start index (byte offset) of current lexeme
-    current: usize, // current index (byte offset)
+    start: usize,   // start index (char offset) of current lexeme
+    current: usize, // current index (char offset)
 }
 
 impl Lexer {

@@ -1,20 +1,14 @@
-use neorg_syntax::lexer::Lexer;
-use ropey::Rope;
+use neorg_syntax::parser::Parser;
 
 fn main() {
- 
-    let input =
-        "* Header\n *bold *\n/italic text/\n_underline_\n~ o list\n- u list\n @code/italic \n text/";
-    // Lexing: preserve all whitespace.
-    let mut lexer = Lexer::new(Rope::from_str(input));
-    let tokens = lexer.lex();
-    for token in &tokens {
-        println!("{}", token);
-    }
-
-    //let mut parser = Parser::new(tokens);
-    //parser.parse().children.into_iter().for_each(|i| {
-    //    println!("{:#?}", i);
-    //});
-    // println!("{:#?}", parser.parse());
+    let input = "* Main Heading\nSome _italic_ text\n- List item\n@ metadata";
+    let mut parser = Parser::new(input);
+    parser.parse().children().for_each(|f| {
+        if f.children().len() != 0 {
+            f.children().for_each(|i| {
+                println!("{:?}: {}", i, i.span());
+            });
+        }
+        println!("{:?}: {}", f, f.span());
+    });
 }

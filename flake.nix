@@ -1,5 +1,5 @@
 {
-  description = "A devShell example";
+  description = "A rusty devShell";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-24.11";
@@ -34,16 +34,13 @@
           mkShellNoCC {
             # nativeBuildInputs is usually what you want -- tools you need to run
             nativeBuildInputs = with pkgs.buildPackages; [
-              pkg-config
-              openssl
+              # pkg-config
+              # openssl
             ];
             buildInputs = [
               lua
               unstable.lazygit
-              llvmPackages.bintools
-              eza
               unstable.neovim
-              fd
               unstable.rustup
               nodejs
               rust-bin.stable.latest.default
@@ -54,7 +51,6 @@
             shellHook = ''
               exec fish --init-command '
               alias rm="roxide"
-              alias find="fd"
               set -x PATH $PATH (set -q CARGO_HOME; and echo $CARGO_HOME; or echo ~/.cargo)/bin
               set -x PATH $PATH (set -q RUSTUP_HOME; and echo $RUSTUP_HOME; or echo ~/.rustup)/toolchains/$RUSTC_VERSION-x86_64-unknown-linux-gnu/bin
               echo $GREETING | ${pkgs.lolcat}/bin/lolcat

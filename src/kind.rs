@@ -27,6 +27,18 @@ pub enum SyntaxKind {
     At,
     /// Error Node
     Error,
+    /// root node of the document
+    Root,
+    /// `/` Italics
+    Italics,
+    Document,
+    Heading,
+    ListItem,
+    Attribute,
+    Paragraph,
+    Italic,
+    Bold,
+    Strikethrough,
 }
 
 impl Display for SyntaxKind {
@@ -44,11 +56,20 @@ impl Display for SyntaxKind {
                 SyntaxKind::Astrisk => "ASTRISK",
                 SyntaxKind::Underscore => "UNDERSCORE",
                 SyntaxKind::Tilda => "TILDA",
-                SyntaxKind::Hyphen => "HYPEN",
+                SyntaxKind::Hyphen => "HYPHEN",
                 SyntaxKind::At => "AT",
                 SyntaxKind::Error => "ERROR",
+                SyntaxKind::Root => "ROOT",
+                SyntaxKind::Italics => "ITALIC",
+                SyntaxKind::Document => "TODO",
+                SyntaxKind::Heading => "TODO",
+                SyntaxKind::ListItem => "TODO",
+                SyntaxKind::Attribute => "TODO",
+                SyntaxKind::Paragraph => "TODO",
+                SyntaxKind::Italic => "TODO",
+                SyntaxKind::Bold => "TODO",
+                SyntaxKind::Strikethrough => "TODO",
             }
         )
     }
 }
-
