@@ -95,26 +95,6 @@ impl Span {
     }
 }
 
-impl Into<Span> for tower_lsp::lsp_types::Range {
-    fn into(self, text: &str) -> tower_lsp::lsp_types::Range {
-        // Determine 0-indexed start and end lines.
-        let line_start = byte_to_line_idx(text, self.start) as u32;
-        let line_end = byte_to_line_idx(text, self.end) as u32;
-
-        // Determine 0-indexed character offsets.
-        let char_start_offset = byte_to_char_idx(text, self.start) as u32;
-        let char_end_offset = byte_to_char_idx(text, self.end) as u32;
-
-        // Compute the first char index for the start and end lines.
-        let line_start_first_idx = line_to_char_idx(text, line_start as usize) as u32;
-        let line_end_first_idx = line_to_char_idx(text, line_end as usize) as u32;
-
-        let start_diff = char_start_offset.saturating_sub(line_start_first_idx);
-        let end_diff = char_end_offset.saturating_sub(line_end_first_idx);
-        Span::new(start, end)
-    }
-}
-
 impl Default for Span {
     fn default() -> Self {
         Self { start: 1, end: 1 }

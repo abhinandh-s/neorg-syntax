@@ -41,8 +41,15 @@ pub enum SyntaxKind {
     HeadingMarker,
 }
 
+type T = SyntaxKind;
+
 impl SyntaxKind {
-    pub fn is_special() {}
+    pub fn is_inline_expr(&self) -> bool {
+        matches!(
+            self,
+            T::Astrisk | T::Slash | T::Underscore | T::Star | T::Hyphen | T::Tilda
+        )
+    }
 }
 
 impl Display for SyntaxKind {

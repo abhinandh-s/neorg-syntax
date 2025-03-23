@@ -1,5 +1,12 @@
 * heading
+** heading
+*** heading
+**** heading
+***** heading
+****** heading
+******* heading
+******** heading
 
   - list 
 
-*this is bold* and this is not
+         Ok *this is bold* and this is /italics/
