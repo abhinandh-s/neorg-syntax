@@ -1,6 +1,6 @@
 use ropey::Rope;
 
-use crate::NeoChar as _;
+use crate::NeoChar;
 use crate::kind::SyntaxKind;
 use crate::span::Span;
 
@@ -14,6 +14,12 @@ pub struct Token {
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {:?} {}", self.kind, self.text, self.span)
+    }
+}
+
+impl NeoChar for char {
+    fn is_special_char(&self) -> bool {
+        matches!(self, '*' | '/' | '_' | '\n' | '\t' | '~' | '-' | ' ')
     }
 }
 

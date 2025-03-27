@@ -8,17 +8,18 @@ fn main() {
     let italics = include_str!("../examples/tests/italics.norg");
     let underline = include_str!("../examples/tests/underline.norg");
     let heading = include_str!("../examples/tests/star.norg");
-    let input = " / this is not italics text /";
+    let input = " / this is not italics text /?|$(){}[]<>=-_+";
     let lexed = lexer::Lexer::new(input.into()).lex();
     for tok in &lexed {
         // println!("{}", tok);
     }
-    parser::Parser::new(lexed.clone())
-        .parse()
-        .iter()
-        .for_each(|n| {
-            // println!("{}", n);
-        });
+    print_lexed(lexed);
+    // parser::Parser::new(lexed.clone())
+    //     .parse()
+    //     .iter()
+    //     .for_each(|n| {
+    //         // println!("{}", n);
+    //     });
     // crate::ast::print_ast(input);
 }
 

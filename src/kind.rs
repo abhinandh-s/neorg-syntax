@@ -17,12 +17,30 @@ pub enum SyntaxKind {
     Eof,
     /// '*'
     Astrisk,
-    /// '_'
+    /// '_' - a horizontal line and underline
     Underscore,
+
+    /// `$` - Definition
+    Dollar,
+
+    // lists
     /// '~' ordered list
     Tilda,
     /// '-' unodered list
     Hyphen,
+
+    LParen,
+    RParen,
+    LCurly,
+    RCurly,
+
+    /// `>` blockquote
+    GreaterThan,
+    LessThan,
+    /// `=` - This modifier uses the `=` character and immediately closes all nesting levels.
+    Equal,
+    /// `|` pipe symbol can mean example, tables
+    Pipe,
     /// '@' at symbol
     At,
     /// Error Node
@@ -39,6 +57,19 @@ pub enum SyntaxKind {
     IndentWhiteSpace,
     BoldMarker,
     HeadingMarker,
+
+    // The following characters are reserved for the TODO status extension:
+    /// -- `| |`: undone (a literal space)
+    /// -- `x`: done
+    Done,
+    /// -- `?`: needs further input/clarification
+    QuestionMark,
+    /// -- `!`: urgent
+    /// -- `+`: recurring (with an optional {**** timestamp extension}[timestamp])
+    /// -- `-`: in-progress/pending
+    /// -- `=`: on hold
+    /// -- `_`: put down/cancelled
+    Plus,
 }
 
 type T = SyntaxKind;
@@ -80,6 +111,18 @@ impl Display for SyntaxKind {
                 SyntaxKind::IndentWhiteSpace => "INDENTWHITESPACE",
                 SyntaxKind::BoldMarker => "BOLDMARKER",
                 SyntaxKind::HeadingMarker => "HEADINGMARKER",
+                SyntaxKind::Dollar => "DOLLAR",
+                SyntaxKind::LParen => "LPAREN",
+                SyntaxKind::RParen => "RPAREN",
+                SyntaxKind::LCurly => "LCURLY",
+                SyntaxKind::RCurly => "RCURLY",
+                SyntaxKind::GreaterThan => "GREATERTHAN",
+                SyntaxKind::Equal => "EQUAL",
+                SyntaxKind::Done => "DONE",
+                SyntaxKind::QuestionMark => "QUESTIONMARK",
+                SyntaxKind::Plus => "PLUS",
+                SyntaxKind::LessThan => "LESSTHAN",
+                SyntaxKind::Pipe => "PIPE",
             }
         )
     }

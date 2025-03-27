@@ -13,12 +13,6 @@ pub trait NeoChar {
     fn is_special_char(&self) -> bool;
 }
 
-impl NeoChar for char {
-    fn is_special_char(&self) -> bool {
-        matches!(self, '*' | '/' | '_' | '\n' | '\t' | '~' | '-' | ' ')
-    }
-}
-
 pub trait ParseTools {
     fn peek(&self) -> &Token;
     fn advance(&mut self) -> Token;
