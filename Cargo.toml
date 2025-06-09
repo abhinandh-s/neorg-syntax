@@ -12,10 +12,12 @@ keywords = ["cli", "tool", "utility"]
 
 [dependencies]
 anyhow = "1.0.95"
+derive_screaming_snake_case = "1.0.0"
 ecow = "0.2.3"
 ropey = "1.6.1"
 thiserror = "2.0.11"
 tower-lsp = "0.20.0"
+unicode-general-category = "1.0.0"
 
 [dev-dependencies]
 insta = "1.42.1"

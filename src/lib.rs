@@ -1,9 +1,9 @@
-use self::lexer::Token;
+// use self::lexer::Token;
 
-pub mod ast;
+// pub mod ast;
 pub mod kind;
-pub mod lexer;
-pub mod parser;
+// pub mod lexer;
+// pub mod parser;
 pub mod span;
 
 pub(crate) mod error;
@@ -13,9 +13,14 @@ pub trait NeoChar {
     fn is_special_char(&self) -> bool;
 }
 
-pub trait ParseTools {
-    fn peek(&self) -> &Token;
-    fn advance(&mut self) -> Token;
-    fn previous(&mut self) -> Token;
-    fn is_at_end(&self) -> bool;
-}
+// pub trait ParseTools {
+//     fn peek(&self) -> &Token;
+//     fn advance(&mut self) -> Token;
+//     fn previous(&mut self) -> Token;
+//     fn is_at_end(&self) -> bool;
+// }
+
+mod lex;
+mod parse;
+pub use lex::*;
+pub use parse::*;

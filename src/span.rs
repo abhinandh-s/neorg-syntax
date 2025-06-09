@@ -19,7 +19,7 @@ impl SpanOps for str {
     fn span(&self) -> Span {
         Span {
             start: 0,
-            end: self.bytes().len(),
+            end: self.len(),
         }
     }
 }
