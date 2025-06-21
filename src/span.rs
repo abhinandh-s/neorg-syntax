@@ -1,10 +1,10 @@
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Span {
-    /// start byte offset of the Token
+    /// start character offset of the Token
     pub start: usize,
-    /// end byte offset of the Token
+    /// end character offset of the Token
     pub end: usize,
 }
 
@@ -26,12 +26,18 @@ impl SpanOps for str {
     fn span(&self) -> Span {
         Span {
             start: 0,
-            end: self.len(),
+            end: self.chars().count(),
         }
     }
 }
 
 impl Display for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[ span: {}..{} ]", self.start, self.end)
+    }
+}
+
+impl Debug for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[ span: {}..{} ]", self.start, self.end)
     }

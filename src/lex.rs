@@ -315,21 +315,6 @@ impl TokenData {
     pub fn offset(&self) -> usize {
         self.offset
     }
-
-    /// Sets the text of this [`TokenData`].
-    pub fn set_text(&mut self, text: String) {
-        self.text = text;
-    }
-
-    /// Sets the kind of this [`TokenData`].
-    pub fn set_kind(&mut self, kind: SyntaxKind) {
-        self.kind = kind;
-    }
-
-    /// Sets the offset of this [`TokenData`].
-    pub fn set_offset(&mut self, offset: usize) {
-        self.offset = offset;
-    }
 }
 
 impl Display for TokenData {
@@ -444,7 +429,7 @@ fn lex_text(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
         text.push(*c);
         chars.next();
     }
-    Some(token!(SyntaxKind::Text, text, offset))
+    Some(token!(SyntaxKind::Word, text, offset))
 }
 
 /// # Unicode Characters in the 'Separator, Space' Category
@@ -521,24 +506,8 @@ mod test {
         let mut binding = Lexer::new(input);
         let tokens = binding.lex();
         for tok in tokens {
-            assert_eq!(tok.kind(), SyntaxKind::Text);
+            assert_eq!(tok.kind(), SyntaxKind::Word);
         }
-    }
-
-    #[test]
-    fn token_data_accessors_work() {
-        let mut tok = TokenData::new("hello".into(), SyntaxKind::Text, 42);
-        assert_eq!(tok.text(), "hello");
-        assert_eq!(tok.kind(), SyntaxKind::Text);
-        assert_eq!(tok.offset(), 42);
-
-        tok.set_text("bye".into());
-        tok.set_kind(SyntaxKind::WhiteSpace);
-        tok.set_offset(1);
-
-        assert_eq!(tok.text(), "bye");
-        assert_eq!(tok.kind(), SyntaxKind::WhiteSpace);
-        assert_eq!(tok.offset(), 1);
     }
 
     #[test]
@@ -575,9 +544,9 @@ mod test {
         let mut lexer = Lexer::new("hello  world");
         let tokens = lexer.lex();
         assert_eq!(tokens.len(), 3);
-        assert_eq!(tokens[0].kind(), SyntaxKind::Text);
+        assert_eq!(tokens[0].kind(), SyntaxKind::Word);
         assert_eq!(tokens[1].kind(), SyntaxKind::WhiteSpace);
-        assert_eq!(tokens[2].kind(), SyntaxKind::Text);
+        assert_eq!(tokens[2].kind(), SyntaxKind::Word);
     }
 
     #[test]
@@ -585,6 +554,6 @@ mod test {
         let mut lexer = Lexer::new("\u{001F}");
         let tokens = lexer.lex();
         assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].kind(), SyntaxKind::Text);
+        assert_eq!(tokens[0].kind(), SyntaxKind::Word);
     }
 }

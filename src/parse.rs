@@ -80,7 +80,6 @@ impl Parser {
 
     pub fn expect(&mut self, open: Marker, kind: SyntaxKind) {
         let token = self.source[self.cursor].clone();
-        dbg!(token.kind());
         if token.kind() == kind {
             // consumed closing delimiter
         } else {
@@ -109,8 +108,8 @@ impl Parser {
                 text: format!("expected {}", kind),
                 hint: "".to_string(),
                 span: {
-                    let this = &self.source[self.cursor - 1];
-                    this.offset() - 1
+                    let this = &self.source[self.cursor];
+                    this.offset()
                 }, // error
             };
             self.nodes
@@ -124,7 +123,6 @@ impl Parser {
         println!("{}", self.nodes.pretty_string());
     }
 }
-
 
 impl Parser {
     /// Checks if the current token at `cursor` is a valid *opening delimiter*.
@@ -155,41 +153,24 @@ impl Parser {
     }
 }
 
-
 /// ```ignore
-/// / this is not italics/
-/// /this is not italics /
-/// /this is italics/
-/// / this is not italics /
+/// /this is italics/  
+/// TODO: / this is not italics/
+/// TODO: /this is not italics /
+/// TODO: / this is not italics /
 /// ```
 pub fn parse_emph(p: &mut Parser) {
     let m = p.start();
-    let kind = K!('/');
-
-    if !p.is_valid_open_delimiter(kind) {
-        // Just treat it as a normal slash
-        p.eat();
-        return;
+    p.assert(K!('/')); // consume '/'
+    // this really wont work. we need parse inline or text
+    let tok = p.source[p.cursor].clone().kind();
+    if tok.is_inline_expr() {
+        parse_inline(p);
+    } else {
+        parse_text_chunk(p);
     }
 
-    p.assert(kind); // consume '/'
-    let inner_start = p.start();
-
-    // Parse until we hit a valid closing '/'
-    while !p.is_eof() {
-        if p.at(kind) && p.is_valid_close_delimiter(kind) {
-            break;
-        }
-        p.eat();
-    }
-    p.wrap(inner_start, SyntaxKind::TextChunk);
-
-    let had_closing = p.eat_if(kind);
-    if !had_closing {
-        // Error recovery: maybe insert error
-        p.expect_closing_delimiter(m, kind);
-    }
-
+    p.eat_if(K!('/'));
     p.wrap(m, SyntaxKind::Emph);
 }
 
@@ -202,13 +183,41 @@ pub fn parse_heading(p: &mut Parser) {
     p.wrap(m, SyntaxKind::Heading);
 }
 
+pub fn parse_verbatnium_text_chunk(p: &mut Parser) {
+    let m = p.start();
+    p.expect(m, SyntaxKind::Word);
+    while p.at(SyntaxKind::Word) || p.at(SyntaxKind::WhiteSpace) {
+        p.eat();
+    }
+    p.wrap(m, SyntaxKind::TextChunk);
+}
+
+/// `TextChunk` cant have whitespace at beg and end
 pub fn parse_text_chunk(p: &mut Parser) {
     let m = p.start();
-    p.expect(m, SyntaxKind::Text);
-    // p.assert(SyntaxKind::Text);
-
-    while p.at(SyntaxKind::Text) || p.at(SyntaxKind::WhiteSpace) {
+    p.expect(m, SyntaxKind::Word);
+    while p.at(SyntaxKind::Word) || p.at(SyntaxKind::WhiteSpace) {
         p.eat();
+    }
+    // if the parser ate any whitespace.
+    // we push it to this vector and pop from the TextChunk children.
+    // after parsing the text TextChunk
+    // we push those collected whitespaces as LeafNode
+    while let Some(SyntaxElement::Leaf(e)) = p.nodes.children.last() {
+        if e.token.kind() == SyntaxKind::WhiteSpace {
+                let error = ErrorNode {
+                kind: SyntaxKind::Error,
+                text: "unexpected WhiteSpace".to_string(),
+                hint: "expected `text`. must not end with whitespace".to_string(),
+                span: {
+                    let this = &p.source[p.cursor - 1];
+                    this.offset()
+                }, // error
+            };
+            p.nodes.children.push(SyntaxElement::Error(Arc::new(error)));
+        } else {
+            break;
+        }
     }
     p.wrap(m, SyntaxKind::TextChunk);
 }
@@ -228,7 +237,7 @@ fn parse_paragraph(p: &mut Parser) {
                 }
                 p.eat(); // single newline gets eaten inside paragraph
             }
-            Some(SyntaxKind::Text) => parse_text_chunk(p),
+            Some(SyntaxKind::Word) => parse_text_chunk(p),
             Some(SyntaxKind::Slash) => parse_emph(p),
             Some(SyntaxKind::WhiteSpace) => p.eat(),
             Some(SyntaxKind::Asterisk) => break, // block-level: heading
@@ -247,7 +256,7 @@ pub fn parse_any(p: &mut Parser) {
     match p.source.get(p.cursor).map(|t| t.kind()) {
         Some(SyntaxKind::Asterisk) => parse_heading(p),
         Some(SyntaxKind::Slash) => parse_emph(p),
-        Some(SyntaxKind::Text | SyntaxKind::WhiteSpace | SyntaxKind::NewLine) => parse_paragraph(p),
+        Some(SyntaxKind::Word | SyntaxKind::WhiteSpace | SyntaxKind::NewLine) => parse_paragraph(p),
         Some(kind) => {
             eprintln!("Unhandled kind: {:?}", kind);
             p.eat();
@@ -262,11 +271,29 @@ pub fn parse_any(p: &mut Parser) {
 ///             TextChunk
 ///             Other Inline elements
 pub fn parse_doc(p: &mut Parser) {
+    // no wrapping here
     while !p.is_eof() {
         parse_any(p);
     }
 }
 
+/// # Inline elements:
+///
+/// - `bold`:
+/// - `italics`:
+/// - `spoilers`:
+/// - `strikethrogh`:
+pub fn parse_inline(p: &mut Parser) {
+    // match on current token in vec of tokens.
+    match p.source.get(p.cursor).map(|t| t.kind()) {
+        Some(SyntaxKind::Asterisk) => parse_heading(p),
+        Some(SyntaxKind::Slash) => parse_emph(p),
+        Some(kind) => {
+            eprintln!("Unhandled kind: {:?}", kind);
+        }
+        None => {}
+    }
+}
 pub fn parse_paragraph_segment(_p: &mut Parser) {}
 pub fn parse_bold(_p: &mut Parser) {}
 pub fn parse_strikethrogh(_p: &mut Parser) {}

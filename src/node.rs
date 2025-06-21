@@ -1,9 +1,39 @@
+use std::fmt::Write;
+use std::sync::Arc;
+
+use crate::{Span, SyntaxKind, Token};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyntaxElement {
     Inner(Arc<InnerNode>),
     Leaf(LeafNode),
     Error(Arc<ErrorNode>),
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SyntaxNode(pub SyntaxElement);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ErrorNode {
+    pub kind: SyntaxKind,
+    pub text: String,
+    pub hint: String,
+    pub span: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeafNode {
+    pub token: Token,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InnerNode {
+    pub kind: SyntaxKind,
+    /// Whether this node or any of its children are erroneous.
+    pub erroneous: bool,
+    pub children: Vec<SyntaxElement>,
+}
+
 
 impl SyntaxElement {
     pub fn span(&self) -> Span {
@@ -21,11 +51,6 @@ impl SyntaxElement {
         }
     }
 }
-
-use std::fmt::Write;
-use std::sync::Arc;
-
-use crate::{Span, SyntaxKind, Token};
 
 impl InnerNode {
     pub fn pretty_string(&self) -> String {
@@ -67,70 +92,12 @@ impl SyntaxElement {
             SyntaxElement::Error(err) => {
                 let _ = writeln!(
                     out,
-                    "{}<ERROR: {} - {} @ {}>",
-                    pad, err.text, err.hint, err.span
+                    "{}{}@{} > {} > {}",
+                    pad, err.kind, err.span, err.text, err.hint
                 );
             }
         }
     }
-}
-
-impl SyntaxElement {
-    pub fn fmt_pretty(&self, f: &mut std::fmt::Formatter<'_>, indent: usize) -> std::fmt::Result {
-        let pad = "│   ".repeat(indent);
-
-        match self {
-            SyntaxElement::Leaf(leaf) => {
-                let token = &leaf.token;
-                writeln!(
-                    f,
-                    "{}{}@{} {:?}",
-                    pad,
-                    token.kind(),
-                    token.offset(),
-                    token.text()
-                )
-            }
-            SyntaxElement::Inner(inner) => {
-                writeln!(f, "{}{}", pad, inner.kind)?;
-                for child in &inner.children {
-                    child.fmt_pretty(f, indent + 1)?;
-                }
-                Ok(())
-            }
-            SyntaxElement::Error(err) => {
-                writeln!(
-                    f,
-                    "{}<ERROR: {} - {} - @{}>",
-                    pad, err.text, err.hint, err.span
-                )
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SyntaxNode(pub SyntaxElement);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ErrorNode {
-    pub kind: SyntaxKind,
-    pub text: String,
-    pub hint: String,
-    pub span: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LeafNode {
-    pub token: Token,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InnerNode {
-    pub kind: SyntaxKind,
-    /// Whether this node or any of its children are erroneous.
-    pub erroneous: bool,
-    pub children: Vec<SyntaxElement>,
 }
 
 impl InnerNode {
