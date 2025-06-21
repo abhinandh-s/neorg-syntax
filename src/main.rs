@@ -3,18 +3,25 @@
 use neorg_syntax::*;
 
 fn main() {
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(tracing::Level::TRACE)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
     let _doc_meta = r#"
     @document.meta
     @end
     "#;
-    let source = include_str!("../examples/tests/italics.norg");
+    let source = include_str!("../examples/tests/heading.norg");
 
     let italics01 = "/ this is not italics/";
     let italics02 = "/this is not italics /";
     let italics03 = "/this is italics/";
     let italics04 = "/ this is not italics /";
+    let heading = "!%/*this is a nested inline text*/%!";
 
-    let mut lexer = Lexer::new(source);
+    let mut lexer = Lexer::new(heading);
     let tokens = lexer.lex();
     let mut p = Parser::new(tokens.to_vec());
 
@@ -29,10 +36,10 @@ fn main() {
     // for (i, emph) in emph_nodes.iter().enumerate() {
     //     println!("ERROR {}: {:?}", i, emph);
     // }
-// 
+    //
     // let mut ranges = Vec::new();
     // collect_error_ranges(&p.nodes, source, &mut ranges);
-// 
+    //
     // for range in &ranges {
     //     println!("LSP error range: {:?}", range);
     // }

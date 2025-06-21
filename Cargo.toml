@@ -12,12 +12,14 @@ keywords = ["cli", "tool", "utility"]
 
 [features]
 default = []
-tower_lsp = ["dep:tower-lsp"]
+tower_lsp = ["dep:tower-lsp", "dep:ropey"]
 
 [dependencies]
 derive_screaming_snake_case = "1.0.0"
-ropey = "1.6.1"
+ropey = { version = "1.6.1", optional = true }
 thiserror = "2.0.11"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
 tower-lsp = { version = "0.20.0", optional = true }
 
 [dev-dependencies]

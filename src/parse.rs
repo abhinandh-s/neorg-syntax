@@ -20,12 +20,20 @@ impl Parser {
         }
     }
 
+    pub fn current(&self) -> SyntaxKind {
+        self.source[self.cursor].kind()
+    }
     pub fn next(&self, kind: SyntaxKind) -> bool {
         self.source.get(self.cursor + 1).map(|t| t.kind()) == Some(kind)
     }
 
     pub fn at(&self, kind: SyntaxKind) -> bool {
         self.source.get(self.cursor).map(|t| t.kind()) == Some(kind)
+    }
+
+    /// Whether the current token is contained in a [`SyntaxSet`].
+    pub fn at_set(&self, set: SyntaxSet) -> bool {
+        set.contains(self.current())
     }
 
     pub fn is_eof(&self) -> bool {
@@ -40,6 +48,15 @@ impl Parser {
         self.cursor += 1;
     }
 
+    pub fn eat_while(&mut self, pred: impl Fn(SyntaxKind) -> bool) {
+        while let Some(t) = self.source.get(self.cursor) {
+            if pred(t.kind()) {
+                self.eat();
+            } else {
+                break;
+            }
+        }
+    }
     pub fn eat_if(&mut self, kind: SyntaxKind) -> bool {
         if self.at(kind) {
             self.eat();
@@ -57,6 +74,8 @@ impl Parser {
             false
         }
     }
+
+    #[track_caller]
     pub fn assert(&mut self, kind: SyntaxKind) {
         assert!(self.at(kind), "Expected {:?}", kind);
         self.eat();
@@ -73,6 +92,7 @@ impl Parser {
             erroneous: false,
             children: drained,
         };
+        tracing::debug!(?m, ?kind, "wrap node");
         self.nodes
             .children
             .push(SyntaxElement::Inner(Arc::new(node)));
@@ -82,11 +102,12 @@ impl Parser {
         let token = self.source[self.cursor].clone();
         if token.kind() == kind {
             // consumed closing delimiter
+            self.eat();
         } else {
             // Error recovery: insert error node
             let error = ErrorNode {
                 kind: SyntaxKind::Error,
-                text: format!("expected {}", kind),
+                text: format!("Syntax Error: expected `{}` found `{}`", kind, token.kind()),
                 hint: "".to_string(),
                 span: {
                     let this = &token;
@@ -98,23 +119,25 @@ impl Parser {
                 .insert(open.0, SyntaxElement::Error(Arc::new(error)));
         }
     }
-    pub fn expect_closing_delimiter(&mut self, open: Marker, kind: SyntaxKind) {
-        if self.eat_if(kind) {
+    pub fn expect_closing_delimiter(&mut self, kind: SyntaxKind) {
+        let token = self.source[self.cursor].clone();
+        if token.kind() == kind {
             // consumed closing delimiter
+            self.eat();
         } else {
             // Error recovery: insert error node
             let error = ErrorNode {
                 kind: SyntaxKind::Error,
-                text: format!("expected {}", kind),
+                text: format!("Syntax Error: unclosed delimiter `{}`", kind.text()),
                 hint: "".to_string(),
                 span: {
-                    let this = &self.source[self.cursor];
+                    let this = &token;
                     this.offset()
                 }, // error
             };
             self.nodes
                 .children
-                .insert(open.0, SyntaxElement::Error(Arc::new(error)));
+                .push(SyntaxElement::Error(Arc::new(error)));
         }
     }
 }
@@ -124,45 +147,20 @@ impl Parser {
     }
 }
 
-impl Parser {
-    /// Checks if the current token at `cursor` is a valid *opening delimiter*.
-    /// Rule: Must not be followed by whitespace (e.g., `/ text` is invalid).
-    pub fn is_valid_open_delimiter(&self, kind: SyntaxKind) -> bool {
-        if !self.at(kind) {
-            return false;
-        }
-        match self.source.get(self.cursor + 1) {
-            Some(t) => !matches!(t.kind(), SyntaxKind::WhiteSpace),
-            None => false,
-        }
-    }
-
-    /// Checks if the current token at `cursor` is a valid *closing delimiter*.
-    /// Rule: Must not be preceded by whitespace (e.g., `text /` is invalid).
-    pub fn is_valid_close_delimiter(&self, kind: SyntaxKind) -> bool {
-        if !self.at(kind) {
-            return false;
-        }
-        if self.cursor == 0 {
-            return false;
-        }
-        match self.source.get(self.cursor - 1) {
-            Some(t) => !matches!(t.kind(), SyntaxKind::WhiteSpace),
-            None => false,
-        }
-    }
-}
-
+/// # cases
+///
+/// all these cases are covered.
+///
 /// ```ignore
 /// /this is italics/  
-/// TODO: / this is not italics/
-/// TODO: /this is not italics /
-/// TODO: / this is not italics /
+/// / this is not italics/
+/// /this is not italics /
+/// / this is not italics /
 /// ```
-pub fn parse_emph(p: &mut Parser) {
+#[tracing::instrument(skip_all)]
+pub fn parse_italics(p: &mut Parser) {
     let m = p.start();
-    p.assert(K!('/')); // consume '/'
-    // this really wont work. we need parse inline or text
+    p.assert(K!('/')); // assert & consume '/'
     let tok = p.source[p.cursor].clone().kind();
     if tok.is_inline_expr() {
         parse_inline(p);
@@ -170,29 +168,86 @@ pub fn parse_emph(p: &mut Parser) {
         parse_text_chunk(p);
     }
 
-    p.eat_if(K!('/'));
+    p.expect_closing_delimiter(K!('/'));
     p.wrap(m, SyntaxKind::Emph);
 }
 
+#[tracing::instrument(skip_all)]
+pub fn parse_pipe(p: &mut Parser) {
+    let m = p.start();
+    p.assert(K!('|')); // assert & consume '/'
+    parse_verbatim_text_chunk(p);
+
+    p.expect_closing_delimiter(K!('|'));
+    p.wrap(m, SyntaxKind::Emph);
+}
+
+/// # Parameters
+///
+/// - `function name`:
+/// - `delimiter kind`:
+/// - `wrapper kind`:
+///
+/// # Usage
+///
+/// ```ignore
+/// parse_inline!(parse_spoiler, K!('!'), SyntaxKind::Spoiler);
+/// parse_inline!(parse_null_modifiler, K!('%'), SyntaxKind::Comment);
+/// parse_inline!(parse_bold, K!('*'), SyntaxKind::Bold);
+/// ```
+/// This is an exact replica of `parse_italics` function
+///
+/// Don't forget to add `SyntaxKind` to `is_inline_expr' method of `SyntaxKind`
+#[macro_export]
+macro_rules! parse_inline {
+    ($fn_name:ident, $kind:expr, $wrapper:expr) => {
+        #[tracing::instrument(skip_all)]
+        pub fn $fn_name(p: &mut Parser) {
+            let m = p.start();
+            p.assert($kind); // assert & consume current token
+            let tok = p.source[p.cursor].clone().kind();
+            if tok.is_inline_expr() {
+                parse_inline(p);
+            } else {
+                parse_text_chunk(p);
+            }
+            p.expect_closing_delimiter($kind);
+            p.wrap(m, $wrapper);
+        }
+    };
+}
+
+parse_inline!(parse_spoiler, K!('!'), SyntaxKind::Spoiler);
+parse_inline!(parse_null_modifiler, K!('%'), SyntaxKind::Comment);
+parse_inline!(parse_bold, K!('*'), SyntaxKind::Bold);
+// -- TODO: make it verbatim
+parse_inline!(parse_maths, K!('$'), SyntaxKind::Maths);
+// -- TODO: check wheter this is single word or not.
+parse_inline!(parse_subscript, K!('^'), SyntaxKind::Subscript);
+parse_inline!(parse_superscript, K!(','), SyntaxKind::Superscript);
+parse_inline!(parse_strike_through, K!('-'), SyntaxKind::StrikeThrough);
+
+#[tracing::instrument(skip_all)]
 pub fn parse_heading(p: &mut Parser) {
     let m = p.start();
     p.assert(K!('*'));
-    p.eat();
+    p.eat_while(|k| matches!(k, SyntaxKind::Asterisk));
     p.eat_if(SyntaxKind::WhiteSpace);
     parse_text_chunk(p);
     p.wrap(m, SyntaxKind::Heading);
 }
 
-pub fn parse_verbatnium_text_chunk(p: &mut Parser) {
+#[tracing::instrument(skip_all)]
+pub fn parse_verbatim_text_chunk(p: &mut Parser) {
     let m = p.start();
-    p.expect(m, SyntaxKind::Word);
-    while p.at(SyntaxKind::Word) || p.at(SyntaxKind::WhiteSpace) {
+    while p.at(SyntaxKind::Pipe) || p.at(SyntaxKind::Eof) {
         p.eat();
     }
     p.wrap(m, SyntaxKind::TextChunk);
 }
 
 /// `TextChunk` cant have whitespace at beg and end
+#[tracing::instrument(skip_all)]
 pub fn parse_text_chunk(p: &mut Parser) {
     let m = p.start();
     p.expect(m, SyntaxKind::Word);
@@ -222,6 +277,7 @@ pub fn parse_text_chunk(p: &mut Parser) {
     p.wrap(m, SyntaxKind::TextChunk);
 }
 
+#[tracing::instrument(skip_all)]
 fn parse_paragraph(p: &mut Parser) {
     let m = p.start();
 
@@ -238,7 +294,7 @@ fn parse_paragraph(p: &mut Parser) {
                 p.eat(); // single newline gets eaten inside paragraph
             }
             Some(SyntaxKind::Word) => parse_text_chunk(p),
-            Some(SyntaxKind::Slash) => parse_emph(p),
+            Some(SyntaxKind::Slash) => parse_italics(p),
             Some(SyntaxKind::WhiteSpace) => p.eat(),
             Some(SyntaxKind::Asterisk) => break, // block-level: heading
             Some(_) => {
@@ -252,10 +308,18 @@ fn parse_paragraph(p: &mut Parser) {
     p.wrap(m, SyntaxKind::Paragraph);
 }
 
+#[tracing::instrument(skip_all)]
 pub fn parse_any(p: &mut Parser) {
     match p.source.get(p.cursor).map(|t| t.kind()) {
-        Some(SyntaxKind::Asterisk) => parse_heading(p),
-        Some(SyntaxKind::Slash) => parse_emph(p),
+        Some(SyntaxKind::Percent) => parse_null_modifiler(p),
+        Some(SyntaxKind::Exclamation) => parse_spoiler(p),
+        Some(SyntaxKind::Asterisk) => parse_bold(p),
+        Some(SyntaxKind::Slash) => parse_italics(p),
+        Some(SyntaxKind::Slash) => parse_italics(p),
+        Some(SyntaxKind::Dollar) => parse_maths(p),
+        Some(SyntaxKind::Subscript) => parse_subscript(p),
+        Some(SyntaxKind::Superscript) => parse_superscript(p),
+        Some(SyntaxKind::Hyphen) => parse_strike_through(p),
         Some(SyntaxKind::Word | SyntaxKind::WhiteSpace | SyntaxKind::NewLine) => parse_paragraph(p),
         Some(kind) => {
             eprintln!("Unhandled kind: {:?}", kind);
@@ -270,6 +334,7 @@ pub fn parse_any(p: &mut Parser) {
 ///         ParagraphSegments
 ///             TextChunk
 ///             Other Inline elements
+#[tracing::instrument(skip_all)]
 pub fn parse_doc(p: &mut Parser) {
     // no wrapping here
     while !p.is_eof() {
@@ -283,20 +348,22 @@ pub fn parse_doc(p: &mut Parser) {
 /// - `italics`:
 /// - `spoilers`:
 /// - `strikethrogh`:
+#[tracing::instrument(skip_all)]
 pub fn parse_inline(p: &mut Parser) {
     // match on current token in vec of tokens.
     match p.source.get(p.cursor).map(|t| t.kind()) {
-        Some(SyntaxKind::Asterisk) => parse_heading(p),
-        Some(SyntaxKind::Slash) => parse_emph(p),
+        Some(SyntaxKind::Percent) => parse_null_modifiler(p),
+        Some(SyntaxKind::Exclamation) => parse_spoiler(p),
+        Some(SyntaxKind::Asterisk) => parse_bold(p),
+        Some(SyntaxKind::Slash) => parse_italics(p),
         Some(kind) => {
             eprintln!("Unhandled kind: {:?}", kind);
         }
         None => {}
     }
 }
+#[tracing::instrument(skip_all)]
 pub fn parse_paragraph_segment(_p: &mut Parser) {}
-pub fn parse_bold(_p: &mut Parser) {}
-pub fn parse_strikethrogh(_p: &mut Parser) {}
 
 #[macro_export]
 macro_rules! assert_tree {
@@ -315,12 +382,70 @@ fn basic_emph() {
     assert_tree!(
         "/this/",
         r#"
-        DOCUMENT
-        │   EMPH
-        │   │   SLASH@0 "/"
-        │   │   TEXT_CHUNK
-        │   │   │   WORD@1 "this"
-        │   │   SLASH@5 "/"
-    "#
+DOCUMENT
+│   EMPH
+│   │   SLASH@0 "/"
+│   │   TEXT_CHUNK
+│   │   │   WORD@1 "this"
+│   │   SLASH@5 "/"
+│   EOF@6 "\0"
+"#
+    );
+}
+#[test]
+fn basic_heading() {
+    assert_tree!(
+        "* this is a heading",
+        r#"
+DOCUMENT
+│   BOLD
+│   │   ASTERISK@0 "*"
+│   │   TEXT_CHUNK
+│   │   │   ERROR@1 > Syntax Error: expected `WORD` found `WHITE_SPACE` > 
+│   │   │   WHITE_SPACE@1 " "
+│   │   │   WORD@2 "this"
+│   │   │   WHITE_SPACE@6 " "
+│   │   │   WORD@7 "is"
+│   │   │   WHITE_SPACE@9 " "
+│   │   │   WORD@10 "a"
+│   │   │   WHITE_SPACE@11 " "
+│   │   │   WORD@12 "heading"
+│   │   ERROR@19 > Syntax Error: unclosed delimiter `*` > 
+│   EOF@19 "\0"
+"#
+    );
+}
+#[test]
+fn basic_nesting() {
+    assert_tree!(
+        "!%/*this is a nested inline text*/%!",
+        r#"
+DOCUMENT
+│   SPOILER
+│   │   EXCLAMATION@0 "!"
+│   │   COMMENT
+│   │   │   PERCENT@1 "%"
+│   │   │   EMPH
+│   │   │   │   SLASH@2 "/"
+│   │   │   │   BOLD
+│   │   │   │   │   ASTERISK@3 "*"
+│   │   │   │   │   TEXT_CHUNK
+│   │   │   │   │   │   WORD@4 "this"
+│   │   │   │   │   │   WHITE_SPACE@8 " "
+│   │   │   │   │   │   WORD@9 "is"
+│   │   │   │   │   │   WHITE_SPACE@11 " "
+│   │   │   │   │   │   WORD@12 "a"
+│   │   │   │   │   │   WHITE_SPACE@13 " "
+│   │   │   │   │   │   WORD@14 "nested"
+│   │   │   │   │   │   WHITE_SPACE@20 " "
+│   │   │   │   │   │   WORD@21 "inline"
+│   │   │   │   │   │   WHITE_SPACE@27 " "
+│   │   │   │   │   │   WORD@28 "text"
+│   │   │   │   │   ASTERISK@32 "*"
+│   │   │   │   SLASH@33 "/"
+│   │   │   PERCENT@34 "%"
+│   │   EXCLAMATION@35 "!"
+│   EOF@36 "\0"
+"#
     );
 }

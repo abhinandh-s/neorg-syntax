@@ -202,7 +202,8 @@ macro_rules! define_lex_fn {
 ///
 #[macro_export]
 macro_rules! define_punct_lexers {
-    ($(($char:literal, $fn_name:ident, $kind:expr)),* $(,)?) => {
+    // $kind is path not expr, cuz it wont allow kind_to_char method
+    ($(($char:literal, $fn_name:ident, $kind:path)),* $(,)?) => {
         $(
             define_lex_fn!($fn_name, $char, $kind);
         )*
@@ -217,12 +218,20 @@ macro_rules! define_punct_lexers {
             }
         }
 
-        fn punctuation_tokenizers() -> std::collections::HashMap<char, LexFn> {
-            std::collections::HashMap::from([
-                $(
-                    ($char, $fn_name as LexFn),
-                )*
-            ])
+        use std::sync::LazyLock;
+        use std::collections::HashMap;
+
+        static PUNCTUATION_TOKENIZERS: LazyLock<HashMap<char, LexFn>> = LazyLock::new(|| {
+             HashMap::from([
+                 $(
+                     ($char, $fn_name as LexFn),
+                 )*
+             ])
+
+        });
+
+        fn punctuation_tokenizers() -> &'static HashMap<char, LexFn> {
+            &PUNCTUATION_TOKENIZERS
         }
 
         pub const fn char_to_kind(c: char) -> SyntaxKind {
@@ -234,6 +243,14 @@ macro_rules! define_punct_lexers {
             }
         }
 
+         pub const fn kind_to_char(kind: SyntaxKind) -> char {
+             match kind {
+                 $(
+                     $kind => $char,
+                 )*
+                 _ => panic!("not a PUNCTUATION kind"),
+             }
+         }
 
         #[test]
         fn test_punct_trait() {
@@ -348,6 +365,8 @@ impl<'a> Lexer<'a> {
         let mut chars = self.source.char_indices().peekable();
         let punct = punctuation_tokenizers();
 
+        let eof_offset = self.source.chars().count();
+
         while let Some(&(offset, char)) = chars.peek() {
             if let Some(&lex_fn) = punct.get(&char) {
                 if let Some(tok) = lex_fn(&mut chars) {
@@ -372,6 +391,7 @@ impl<'a> Lexer<'a> {
             self.tokens.push(token!(SyntaxKind::Error, char, offset));
         }
 
+        self.tokens.push(token!(SyntaxKind::Eof, '\0', eof_offset));
         &self.tokens
     }
 }
@@ -416,6 +436,7 @@ define_punct_lexers![
     ('%', lex_percent, SyntaxKind::Percent),
     ('|', lex_pipe, SyntaxKind::Pipe),
     ('$', lex_dollar, SyntaxKind::Dollar),
+    ('!', lex_exclamation, SyntaxKind::Exclamation),
 ];
 
 /// eats SyntaxKind `Text` and `WhiteSpace`
@@ -434,7 +455,7 @@ fn lex_text(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
 
 /// # Unicode Characters in the 'Separator, Space' Category
 ///
-/// https://www.fileformat.info/info/unicode/category/Zs/list.htm
+/// <https://www.fileformat.info/info/unicode/category/Zs/list.htm>
 pub const ZS_WHITESPACE: [char; 17] = [
     '\u{0020}', // SPACE
     '\u{00A0}', // NO-BREAK SPACE
@@ -506,6 +527,9 @@ mod test {
         let mut binding = Lexer::new(input);
         let tokens = binding.lex();
         for tok in tokens {
+            if tok.kind() == SyntaxKind::Eof {
+                break;
+            }
             assert_eq!(tok.kind(), SyntaxKind::Word);
         }
     }
@@ -543,17 +567,19 @@ mod test {
     fn lexer_correctly_lexes_text_and_ws() {
         let mut lexer = Lexer::new("hello  world");
         let tokens = lexer.lex();
-        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens.len(), 4);
         assert_eq!(tokens[0].kind(), SyntaxKind::Word);
         assert_eq!(tokens[1].kind(), SyntaxKind::WhiteSpace);
         assert_eq!(tokens[2].kind(), SyntaxKind::Word);
+        assert_eq!(tokens[3].kind(), SyntaxKind::Eof);
     }
 
     #[test]
     fn lexer_handles_unknown_characters_as_text() {
         let mut lexer = Lexer::new("\u{001F}");
         let tokens = lexer.lex();
-        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens.len(), 2);
         assert_eq!(tokens[0].kind(), SyntaxKind::Word);
+        assert_eq!(tokens[1].kind(), SyntaxKind::Eof);
     }
 }

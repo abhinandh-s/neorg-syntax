@@ -6,7 +6,7 @@ fn test_parse_emph() {
     let mut binding = Lexer::new(source);
     let tokens = binding.lex();
     let mut parser = Parser::new(tokens.to_vec());
-    parse_emph(&mut parser);
+    parse_italics(&mut parser);
     let parser = parser.nodes;
     let _kind = parser.children.first().unwrap().to_owned();
 }
