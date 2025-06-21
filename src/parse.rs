@@ -205,7 +205,7 @@ pub fn parse_text_chunk(p: &mut Parser) {
     // we push those collected whitespaces as LeafNode
     while let Some(SyntaxElement::Leaf(e)) = p.nodes.children.last() {
         if e.token.kind() == SyntaxKind::WhiteSpace {
-                let error = ErrorNode {
+            let error = ErrorNode {
                 kind: SyntaxKind::Error,
                 text: "unexpected WhiteSpace".to_string(),
                 hint: "expected `text`. must not end with whitespace".to_string(),
@@ -297,3 +297,30 @@ pub fn parse_inline(p: &mut Parser) {
 pub fn parse_paragraph_segment(_p: &mut Parser) {}
 pub fn parse_bold(_p: &mut Parser) {}
 pub fn parse_strikethrogh(_p: &mut Parser) {}
+
+#[macro_export]
+macro_rules! assert_tree {
+    ($input:expr, $expect:literal) => {{
+        let mut lexer = Lexer::new($input);
+        let tokens = lexer.lex();
+        let mut p = Parser::new(tokens.to_vec());
+        parse_doc(&mut p);
+        let actual = p.nodes.pretty_string();
+        expect_test::expect![$expect].assert_eq(&actual);
+    }};
+}
+
+#[test]
+fn basic_emph() {
+    assert_tree!(
+        "/this/",
+        r#"
+        DOCUMENT
+        │   EMPH
+        │   │   SLASH@0 "/"
+        │   │   TEXT_CHUNK
+        │   │   │   WORD@1 "this"
+        │   │   SLASH@5 "/"
+    "#
+    );
+}
