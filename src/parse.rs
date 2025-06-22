@@ -315,7 +315,6 @@ pub fn parse_any(p: &mut Parser) {
         Some(SyntaxKind::Exclamation) => parse_spoiler(p),
         Some(SyntaxKind::Asterisk) => parse_bold(p),
         Some(SyntaxKind::Slash) => parse_italics(p),
-        Some(SyntaxKind::Slash) => parse_italics(p),
         Some(SyntaxKind::Dollar) => parse_maths(p),
         Some(SyntaxKind::Subscript) => parse_subscript(p),
         Some(SyntaxKind::Superscript) => parse_superscript(p),

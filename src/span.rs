@@ -1,10 +1,16 @@
+//! # Span 
+//!
+//! Token will have just offset
+//! SyntaxNode will get Span
+
+
 use std::fmt::{Debug, Display};
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Span {
-    /// start character offset of the Token
+    /// start character offset of the SyntaxNode
     pub start: usize,
-    /// end character offset of the Token
+    /// end character offset of the SyntaxNode
     pub end: usize,
 }
 

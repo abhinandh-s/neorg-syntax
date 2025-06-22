@@ -439,6 +439,21 @@ define_punct_lexers![
     ('!', lex_exclamation, SyntaxKind::Exclamation),
 ];
 
+fn lext_escaped_char(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
+    let (offset, char) = *chars.peek()?;
+    if char != '\\' {
+        return None;
+    }
+    chars.next(); // char is '\' so eat it
+
+    if let Some((_, char)) = chars.peek() {
+       if char.is_punctuation() {
+            return Some(token!(SyntaxKind::Word, format!("\\{}", &char), offset));
+        } 
+    }
+    None
+}
+
 /// eats SyntaxKind `Text` and `WhiteSpace`
 fn lex_text(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
     let (offset, _char) = *chars.peek()?;
