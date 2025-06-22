@@ -373,7 +373,7 @@ impl<'a> Lexer<'a> {
 
         let eof_offset = self.source.chars().count();
 
-        while let Some(&(offset, char)) = chars.peek() {
+        while let Some(&(_, char)) = chars.peek() {
             if let Some(&lex_fn) = punct.get(&char) {
                 if let Some(tok) = lex_fn(&mut chars) {
                     self.tokens.push(tok);
@@ -397,10 +397,7 @@ impl<'a> Lexer<'a> {
                 continue;
             }
 
-            // fallback: unknown character
-            chars.next(); // consume one char
-            // this line should not be reached
-            self.tokens.push(token!(SyntaxKind::Error, char, offset));
+            chars.next(); 
         }
 
         self.tokens.push(token!(SyntaxKind::Eof, '\0', eof_offset));
@@ -408,13 +405,13 @@ impl<'a> Lexer<'a> {
     }
 }
 
-pub(crate) trait NeorgChar {
+trait NeorgChar: private::Sealed {
     fn is_neorg_char(&self) -> bool;
 }
 
 impl NeorgChar for char {
     fn is_neorg_char(&self) -> bool {
-        self.is_punctuation() || self.is_zs_whitespace()
+        self.is_punctuation() || self.is_zs_whitespace() || self.is_line_ending()
     }
 }
 
