@@ -1,3 +1,5 @@
+// -- TODO: Any line may be preceded by a variable amount of whitespace, should be ignored.
+
 use std::sync::Arc;
 
 use crate::*;

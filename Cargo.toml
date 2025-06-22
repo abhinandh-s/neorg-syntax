@@ -40,7 +40,6 @@ overflow-checks = false
 [workspace.lints.rust]
 unsafe_code = "warn"
 unused_labels = "allow"
-unreachable_pub = "deny"
 
 [workspace.lints.clippy]
 perf = "deny"
@@ -48,6 +47,4 @@ unwrap_used = "deny"
 expect_used = "deny"
 or_then_unwrap = "deny"
 panicking_unwrap = "deny"
-get_unwrap = "deny"
-enum_glob_use = "deny"
 redundant_closure = "deny"

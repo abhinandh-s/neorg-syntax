@@ -213,6 +213,12 @@ macro_rules! define_punct_lexers {
         }
 
         impl NeorgPunct for char {
+            /// # Punctuation
+            ///
+            /// A {** characters}[character] is considered *punctuation* if it is any of the following:
+            ///
+            /// - A standard ASCII punctuation character: `|!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~|`
+            /// - Anything in the general Unicode categories `Pc`, `Pd`, `Pe`, `Pf`, `Pi`, `Po` or `Ps`.
             fn is_punctuation(&self) -> bool {
                 matches!(self, $( $char )|*)
             }
@@ -375,6 +381,12 @@ impl<'a> Lexer<'a> {
                 }
             }
 
+            // TODO: write test
+            if let Some(tok) = lex_escaped_char(&mut chars) {
+                self.tokens.push(tok);
+                continue;
+            }
+
             if let Some(tok) = lex_white_space(&mut chars) {
                 self.tokens.push(tok);
                 continue;
@@ -397,30 +409,33 @@ impl<'a> Lexer<'a> {
 }
 
 pub(crate) trait NeorgChar {
-    fn is_zs_whitespace(&self) -> bool;
     fn is_neorg_char(&self) -> bool;
 }
 
 impl NeorgChar for char {
-    fn is_zs_whitespace(&self) -> bool {
-        ZS_WHITESPACE.contains(self)
-    }
-
     fn is_neorg_char(&self) -> bool {
         self.is_punctuation() || self.is_zs_whitespace()
     }
 }
 
 define_punct_lexers![
-    ('=', lex_equal, SyntaxKind::Equal),
+    ('&', lex_ampersand, SyntaxKind::Ampersand),
+    ('?', lex_question_mark, SyntaxKind::QuestionMark),
+    ('~', lex_tilda, SyntaxKind::Tilda),
+    ('"', lex_double_qoute, SyntaxKind::DoubleQoute),
+    ('<', lex_less_than, SyntaxKind::Equal),
+    ('=', lex_equal, SyntaxKind::LessThan),
+    ('>', lex_greater_than, SyntaxKind::GreaterThan),
     ('*', lex_asterisk, SyntaxKind::Asterisk),
+    ('+', lex_plus, SyntaxKind::Plus),
     (':', lex_colon, SyntaxKind::Colon),
     (';', lex_semicolon, SyntaxKind::Semicolon),
     ('@', lex_at, SyntaxKind::At),
     ('.', lex_dot, SyntaxKind::Dot),
+    ('\t', lex_tab, SyntaxKind::Tab), // Tabs are not expanded to spaces
     ('\n', lex_newline, SyntaxKind::NewLine),
-    ('\t', lex_tab, SyntaxKind::Tab),
     ('\r', lex_carriage_return, SyntaxKind::CarriageReturn),
+    ('\u{000C}', lex_form_feed, SyntaxKind::FormFeed),
     ('#', lex_pound, SyntaxKind::Pound),
     ('[', lex_l_brace, SyntaxKind::LSquare),
     (']', lex_r_brace, SyntaxKind::RSquare),
@@ -429,9 +444,11 @@ define_punct_lexers![
     ('(', lex_l_paren, SyntaxKind::LParen),
     (')', lex_r_paren, SyntaxKind::RParen),
     ('_', lex_underscore, SyntaxKind::Underscore),
+    ('-', lex_hyphen, SyntaxKind::Hyphen),
     ('/', lex_slash, SyntaxKind::Slash),
     ('^', lex_caret, SyntaxKind::Caret),
     (',', lex_comma, SyntaxKind::Comma),
+    ('\'', lex_single_qoute, SyntaxKind::SingleQoute),
     ('`', lex_backtick, SyntaxKind::Backtick),
     ('%', lex_percent, SyntaxKind::Percent),
     ('|', lex_pipe, SyntaxKind::Pipe),
@@ -439,7 +456,7 @@ define_punct_lexers![
     ('!', lex_exclamation, SyntaxKind::Exclamation),
 ];
 
-fn lext_escaped_char(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
+fn lex_escaped_char(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
     let (offset, char) = *chars.peek()?;
     if char != '\\' {
         return None;
@@ -447,11 +464,17 @@ fn lext_escaped_char(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
     chars.next(); // char is '\' so eat it
 
     if let Some((_, char)) = chars.peek() {
-       if char.is_punctuation() {
-            return Some(token!(SyntaxKind::Word, format!("\\{}", &char), offset));
-        } 
+        if char.is_punctuation() {
+            return Some(token!(
+                SyntaxKind::EscapedChar,
+                format!("\\{}", &char),
+                offset
+            ));
+        }
     }
-    None
+    
+    // if there is no punctuation char after `\` then lex it as `ForwardSlash`
+    Some(token!(SyntaxKind::ForwardSlash, '\\', offset))
 }
 
 /// eats SyntaxKind `Text` and `WhiteSpace`
@@ -468,49 +491,106 @@ fn lex_text(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
     Some(token!(SyntaxKind::Word, text, offset))
 }
 
-/// # Unicode Characters in the 'Separator, Space' Category
-///
-/// <https://www.fileformat.info/info/unicode/category/Zs/list.htm>
-pub const ZS_WHITESPACE: [char; 17] = [
-    '\u{0020}', // SPACE
-    '\u{00A0}', // NO-BREAK SPACE
-    '\u{1680}', // OGHAM SPACE MARK
-    '\u{2000}', // EN QUAD
-    '\u{2001}', // EM QUAD
-    '\u{2002}', // EN SPACE
-    '\u{2003}', // EM SPACE
-    '\u{2004}', // THREE-PER-EM SPACE
-    '\u{2005}', // FOUR-PER-EM SPACE
-    '\u{2006}', // SIX-PER-EM SPACE
-    '\u{2007}', // FIGURE SPACE
-    '\u{2008}', // PUNCTUATION SPACE
-    '\u{2009}', // THIN SPACE
-    '\u{200A}', // HAIR SPACE
-    '\u{202F}', // NARROW NO-BREAK SPACE
-    '\u{205F}', // MEDIUM MATHEMATICAL SPACE
-    '\u{3000}', // IDEOGRAPHIC SPACE
-];
-
-pub fn is_zs_whitespace(ch: char) -> bool {
-    ZS_WHITESPACE.contains(&ch)
+/// helper trait to seal ZsWhitespace trait only on char
+mod private {
+    pub(super) trait Sealed {}
+    impl Sealed for char {}
 }
 
-/// Whitespace
-/// A {** characters}[character] is considered *whitespace* if it constitutes any code point in the
-/// [Unicode Zs general category]{https://www.fileformat.info/info/unicode/category/Zs/list.htm}.
+/// now ZsWhitespace trait can only be implemented on char
+#[allow(clippy::wrong_self_convention, dead_code)]
+trait NorgChar: private::Sealed {
+    fn is_zs_whitespace(self) -> bool;
+    fn is_line_ending(self) -> bool;
+}
+
+#[rustfmt::skip]
+impl NorgChar for char {
+    /// # Unicode Characters in the 'Separator, Space' Category
+    ///
+    /// <https://www.fileformat.info/info/unicode/category/Zs/list.htm>
+    #[inline(always)]
+    fn is_zs_whitespace(self) -> bool {
+        matches!(
+            self,
+            '\u{0020}' // SPACE
+          | '\u{00A0}' // NO-BREAK SPACE
+          | '\u{1680}' // OGHAM SPACE MARK
+          | '\u{2000}' // EN QUAD
+          | '\u{2001}' // EM QUAD
+          | '\u{2002}' // EN SPACE
+          | '\u{2003}' // EM SPACE
+          | '\u{2004}' // THREE-PER-EM SPACE
+          | '\u{2005}' // FOUR-PER-EM SPACE
+          | '\u{2006}' // SIX-PER-EM SPACE
+          | '\u{2007}' // FIGURE SPACE
+          | '\u{2008}' // PUNCTUATION SPACE
+          | '\u{2009}' // THIN SPACE
+          | '\u{200A}' // HAIR SPACE
+          | '\u{202F}' // NARROW NO-BREAK SPACE
+          | '\u{205F}' // MEDIUM MATHEMATICAL SPACE
+          | '\u{3000}' // IDEOGRAPHIC SPACE
+        )
+    }
+
+    /// # Line Endings
+    /// 
+    /// Line endings in Norg serve as a termination character.
+    /// They are used e.g. to terminate `paragraph segments`, `paragraphs`
+    /// and other elements like the endings of `range-able detached modifiers`.
+    /// They are not considered `whitespace`.
+    ///
+    /// The following chars are considered line endings:
+    /// 
+    /// - A line feed `U+000A` (\n)
+    /// - A form feed `U+000C`
+    /// - A carriage return `U+000D` (\r)
+    ///
+    /// The following line ending combinations are permitted:
+    /// 
+    /// - A single line feed
+    /// - A single carriage return
+    /// - A carriage return immediately followed by a line feed
+    #[inline(always)]
+    fn is_line_ending(self) -> bool {
+        matches!(self, '\u{000A}' | '\u{000C}' | '\u{000D}')
+    }
+}
+
+/// # Whitespace
+///
+/// A [`character`] is considered *whitespace* if it constitutes any code point in the
+/// [Unicode Zs general category](https://www.fileformat.info/info/unicode/category/Zs/list.htm).
+///
+/// Any combination of the above is also considered whitespace.
+///
+/// Tabs are not expanded to spaces and since whitespace has no semantic meaning there is no need
+/// to define a default tab stop. However, if a parser must (for implementation reasons) define a
+/// tab stop, we suggest setting it to 4 spaces.
+///
+/// Any line may be preceded by a variable amount of whitespace, which should be ignored. Upon
+/// entering the beginning of a new line, it is recommended for parsers to continue consuming (and
+/// discarding) consecutive whitespace characters exhaustively.
+///
+/// The "start of a line" is considered to be /after/ this initial whitespace has been parsed.
+/// Keep this in mind when reading the rest of the document.
+/// -- NOTE: we are not consuming and discarding whitespace's at the beginning of lines, even
+///          though the spec says
+///          cuz, it mess up the spans / offset (and the concept of CST)
+///          maybe a warning should be provided while parsing, with low severity
 fn lex_white_space(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
     let (offset, _) = *chars.peek()?;
     if chars
         .peek()
         .copied()
-        .map(|c| c.1.is_zs_whitespace() && c.1 != '\n')
+        .map(|(_, char)| char.is_zs_whitespace() && char != '\n')
         != Some(true)
     {
         return None;
     }
     let mut text = String::new();
     while let Some((_, char)) = chars.peek() {
-        if char.is_whitespace() && *char != '\n' {
+        if char.is_zs_whitespace() && *char != '\n' {
             text.push(*char);
             chars.next();
         } else {
@@ -555,14 +635,6 @@ mod test {
         assert_eq!(tok.kind(), SyntaxKind::Equal);
         assert_eq!(tok.text(), "=");
         assert_eq!(tok.offset(), 10);
-    }
-
-    #[test]
-    fn test_is_zs_whitespace() {
-        for &c in ZS_WHITESPACE.iter() {
-            assert!(is_zs_whitespace(c));
-        }
-        assert!(!is_zs_whitespace('a'));
     }
 
     #[test]

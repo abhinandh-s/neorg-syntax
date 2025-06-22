@@ -6,50 +6,53 @@ use crate::kind_to_char;
 #[derive(Debug, Display, PartialEq, Eq, Clone, Copy, Hash)]
 #[repr(u8)]
 pub enum SyntaxKind {
-    Comment,
-    Spoiler,
-    Pound,       // `#`
-    At,          // `@`
-    Slash,       // `/`
-    Asterisk,    // `*`
-    Caret,       // `^`
-    Subscript,   // `^subscript^`
-    Dollar,      // `$`
-    Percent,     // `%`
-    Exclamation, // `!`
-    Comma,       // `,`
-    Superscript, // `,superscript,`
-    Pipe,        // `|`
-    Underscore,  // `_`
-    Backtick,    // `\``
-
-    Hyphen,        // `-`
-    StrikeThrough, // `-this is strike through-`
-
-    NewLine,        // `\n`
-    CarriageReturn, // `\r`
-    Tab,            // `\t`
-
-    Word,       // a word
-    WhiteSpace, // ` `
-
-    KwDocument, // `@document`
-    KwMeta,     // `@document.meta`
-    KwEnd,      // `@end`
-    KwCode,     // `@code`
-
-    LSquare, // `[`
-    RSquare, // `]`
-    LParen,  // `(`
-    RParen,  // `)`
-    LCurly,  // `{`
-    RCurly,  // `}`
-
-    GreaterThan, // `>`
-    LessThan,    // `<`
-    Error,       // `=`
-    Italics,     // `/this is Italics/`
-    Heading,     // `** this is heading`
+    EscapedChar,     // neorg specific chars can be escaped 
+    Comment,         // %this is inline comment%, there is also an another way 
+    Spoiler,         // !this is a spoiler!
+    Pound,           // `#`
+    At,              // `@`
+    Slash,           // `/`
+    ForwardSlash,    // `\`
+    QuestionMark,    // `?`
+    Asterisk,        // `*`
+    Plus,            // `+`
+    Caret,           // `^`
+    Subscript,       // `^subscript^`
+    Dollar,          // `$`
+    Percent,         // `%`
+    Exclamation,     // `!`
+    Comma,           // `,`
+    Ampersand,       // `&`
+    DoubleQoute,     // '"'
+    SingleQoute,     // `'`
+    Tilda,           // `~`
+    Superscript,     // `,superscript,`
+    Pipe,            // `|`
+    Underscore,      // `_`
+    Backtick,        // `\``
+    Hyphen,          // `-`
+    StrikeThrough,   // `-this is strike through-`
+    NewLine,         // `\n`
+    CarriageReturn,  // `\r`
+    Tab,             // `\t`
+    FormFeed,        // `\u{000C}`
+    Word,            // a word
+    WhiteSpace,      // ` `
+    KwDocument,      // `@document`
+    KwMeta,          // `@document.meta`
+    KwEnd,           // `@end`
+    KwCode,          // `@code`
+    LSquare,         // `[`
+    RSquare,         // `]`
+    LParen,          // `(`
+    RParen,          // `)`
+    LCurly,          // `{`
+    RCurly,          // `}`
+    GreaterThan,     // `>`
+    LessThan,        // `<`
+    Error,           // `=`
+    Italics,         // `/this is Italics/`
+    Heading,         // `** this is heading`
     Bold,
     HeadingMarker,
     Eof,
