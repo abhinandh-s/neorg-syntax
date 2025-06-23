@@ -1,18 +1,3 @@
-use neorg_syntax::*;
-
-#[test]
-fn test_parse_emph() {
-    let source = "/this is italics/";
-    let mut binding = Lexer::new(source);
-    let tokens = binding.lex();
-    let mut parser = Parser::new(tokens.to_vec());
-    parse_italics(&mut parser);
-    let parser = parser.nodes;
-    let _kind = parser.children.first().unwrap().to_owned();
-}
-
-
-
 // #[test]
 // fn parsing_001() {
 //     let tokens = vec![

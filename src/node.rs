@@ -4,14 +4,14 @@ use std::sync::Arc;
 use crate::{Span, SyntaxKind, Token};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SyntaxElement {
+pub(crate) enum SyntaxElement {
     Inner(Arc<InnerNode>),
     Leaf(LeafNode),
     Error(Arc<ErrorNode>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SyntaxNode(pub SyntaxElement);
+pub struct SyntaxNode(SyntaxElement);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ErrorNode {
@@ -27,14 +27,15 @@ pub struct LeafNode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InnerNode {
-    pub kind: SyntaxKind,
+pub(crate) struct InnerNode {
+    pub(crate) kind: SyntaxKind,
     /// Whether this node or any of its children are erroneous.
-    pub erroneous: bool,
-    pub children: Vec<SyntaxElement>,
+    pub(crate) erroneous: bool,
+    pub(crate) children: Vec<SyntaxElement>,
 }
 
 
+#[allow(dead_code)]
 impl SyntaxElement {
     pub fn span(&self) -> Span {
         match self {

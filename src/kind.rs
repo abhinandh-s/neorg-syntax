@@ -6,6 +6,7 @@ use crate::kind_to_char;
 #[derive(Debug, Display, PartialEq, Eq, Clone, Copy, Hash)]
 #[repr(u8)]
 pub enum SyntaxKind {
+    LineEnding,      // `\n`, `\r`, `\u{000C}`
     EscapedChar,     // neorg specific chars can be escaped 
     Comment,         // %this is inline comment%, there is also an another way 
     Spoiler,         // !this is a spoiler!
@@ -32,10 +33,7 @@ pub enum SyntaxKind {
     Backtick,        // `\``
     Hyphen,          // `-`
     StrikeThrough,   // `-this is strike through-`
-    NewLine,         // `\n`
-    CarriageReturn,  // `\r`
     Tab,             // `\t`
-    FormFeed,        // `\u{000C}`
     Word,            // a word
     WhiteSpace,      // ` `
     KwDocument,      // `@document`

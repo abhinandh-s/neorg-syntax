@@ -8,15 +8,16 @@ use crate::*;
 pub struct Marker(pub usize);
 
 pub struct Parser {
-    pub source: Vec<Token>,
-    pub cursor: usize,
-    pub nodes: InnerNode, // top-level node
+    source: Vec<Token>,
+    cursor: usize,
+    nodes: InnerNode, // top-level node
 }
 
 impl Parser {
-    pub fn new(source: Vec<Token>) -> Self {
+    pub fn new(source: &str) -> Self {
+        let mut lexer = Lexer::new(source); 
         Self {
-            source,
+            source: lexer.lex().to_vec(),
             cursor: 0,
             nodes: InnerNode::new(SyntaxKind::Document),
         }
@@ -240,6 +241,15 @@ pub fn parse_heading(p: &mut Parser) {
 }
 
 #[tracing::instrument(skip_all)]
+pub fn parse_paragraph_segment(p: &mut Parser) {
+    let m = p.start();
+    while !p.at(SyntaxKind::LineEnding) {
+       p.eat(); 
+    }
+    p.wrap(m, SyntaxKind::ParaSegment);
+}
+
+#[tracing::instrument(skip_all)]
 pub fn parse_verbatim_text_chunk(p: &mut Parser) {
     let m = p.start();
     while p.at(SyntaxKind::Pipe) || p.at(SyntaxKind::Eof) {
@@ -286,10 +296,10 @@ fn parse_paragraph(p: &mut Parser) {
     // Paragraph is a sequence of inline elements like text, emphasis, etc.
     while !p.is_eof() {
         match p.source.get(p.cursor).map(|t| t.kind()) {
-            Some(SyntaxKind::NewLine) => {
+            Some(SyntaxKind::LineEnding) => {
                 // look ahead: if next is also newline, end paragraph
                 if let Some(next) = p.source.get(p.cursor + 1) {
-                    if next.kind() == SyntaxKind::NewLine {
+                    if next.kind() == SyntaxKind::LineEnding {
                         break;
                     }
                 }
@@ -321,7 +331,9 @@ pub fn parse_any(p: &mut Parser) {
         Some(SyntaxKind::Subscript) => parse_subscript(p),
         Some(SyntaxKind::Superscript) => parse_superscript(p),
         Some(SyntaxKind::Hyphen) => parse_strike_through(p),
-        Some(SyntaxKind::Word | SyntaxKind::WhiteSpace | SyntaxKind::NewLine) => parse_paragraph(p),
+        Some(SyntaxKind::Word | SyntaxKind::WhiteSpace) => parse_paragraph(p),
+        // -- FIX: we should not get LineEnding
+        Some(SyntaxKind::LineEnding) => parse_paragraph_segment(p),
         Some(kind) => {
             eprintln!("Unhandled kind: {:?}", kind);
             p.eat();
@@ -350,7 +362,7 @@ pub fn parse_doc(p: &mut Parser) {
 /// - `spoilers`:
 /// - `strikethrogh`:
 #[tracing::instrument(skip_all)]
-pub fn parse_inline(p: &mut Parser) {
+pub(crate) fn parse_inline(p: &mut Parser) {
     // match on current token in vec of tokens.
     match p.source.get(p.cursor).map(|t| t.kind()) {
         Some(SyntaxKind::Percent) => parse_null_modifiler(p),
@@ -363,15 +375,11 @@ pub fn parse_inline(p: &mut Parser) {
         None => {}
     }
 }
-#[tracing::instrument(skip_all)]
-pub fn parse_paragraph_segment(_p: &mut Parser) {}
 
 #[macro_export]
 macro_rules! assert_tree {
     ($input:expr, $expect:literal) => {{
-        let mut lexer = Lexer::new($input);
-        let tokens = lexer.lex();
-        let mut p = Parser::new(tokens.to_vec());
+        let mut p = Parser::new($input);
         parse_doc(&mut p);
         let actual = p.nodes.pretty_string();
         expect_test::expect![$expect].assert_eq(&actual);

@@ -1,5 +1,4 @@
-#![allow(rust_2018_idioms)]
-#![forbid(clippy::unwrap_used)]
+#![deny(rust_2018_idioms, missing_docs)]
 
 use std::{
     fmt::{Debug, Display},
@@ -10,8 +9,16 @@ use std::{
 
 use crate::SyntaxKind;
 
+/// helper private trait to keep trait only accessable for `char`
+///
+/// see [`NeorgChar`] trait for example
+mod char {
+    pub(super) trait Sealed {}
+    impl Sealed for char {}
+}
+
 /// wrapper around `Arc<TokenData>`
-pub type Token = Arc<TokenData>;
+pub(crate) type Token = Arc<TokenData>;
 
 /// A macro to easily create `TokenData` wrapped in `Arc`
 ///
@@ -80,7 +87,7 @@ macro_rules! token {
 ///
 /// This become handy when we put it in `HashMap`.
 /// Any function with this Signature can be tied together.
-pub type LexFn = fn(&mut Peekable<CharIndices>) -> Option<Token>;
+type LexFn = fn(&mut Peekable<CharIndices<'_>>) -> Option<Token>;
 
 /// This macro generates a function with the given name that checks if the current character
 /// in the input stream matches a specified character literal. If it matches, the function
@@ -120,7 +127,6 @@ pub type LexFn = fn(&mut Peekable<CharIndices>) -> Option<Token>;
 /// //     }
 /// // }
 /// ```
-#[macro_export]
 macro_rules! define_lex_fn {
     ($fn_name:ident, $char:literal, $kind:expr) => {
         fn $fn_name(chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>) -> Option<Token> {
@@ -200,7 +206,6 @@ macro_rules! define_lex_fn {
 /// - It depends on the [`define_lex_fn!`] macro being available.
 /// - This macro should be invoked at module level, not inside a function.
 ///
-#[macro_export]
 macro_rules! define_punct_lexers {
     // $kind is path not expr, cuz it wont allow kind_to_char method
     ($(($char:literal, $fn_name:ident, $kind:path)),* $(,)?) => {
@@ -208,7 +213,7 @@ macro_rules! define_punct_lexers {
             define_lex_fn!($fn_name, $char, $kind);
         )*
 
-        trait NeorgPunct {
+        trait NeorgPunct: char::Sealed {
             fn is_punctuation(&self) -> bool;
         }
 
@@ -219,6 +224,11 @@ macro_rules! define_punct_lexers {
             ///
             /// - A standard ASCII punctuation character: `|!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~|`
             /// - Anything in the general Unicode categories `Pc`, `Pd`, `Pe`, `Pf`, `Pi`, `Po` or `Ps`.
+            ///
+            /// -- NOTE: i have not included all general Unicode categories.
+            ///          These 7 categories contains almost 850 chars.
+            ///          Since, `Neorg` doesn't uses all of it. i don't see any point
+            ///          puting it all here.
             fn is_punctuation(&self) -> bool {
                 matches!(self, $( $char )|*)
             }
@@ -240,7 +250,18 @@ macro_rules! define_punct_lexers {
             &PUNCTUATION_TOKENIZERS
         }
 
-        pub const fn char_to_kind(c: char) -> SyntaxKind {
+        ///  returns `SyntaxKind` of corresponding `char`
+        ///
+        ///  > is indented for `K!` macro
+        ///
+        /// # Parameters
+        ///
+        ///  - SyntaxKind
+        ///
+        /// # Panic
+        ///
+        /// panics if given `char` is not a punctuation char
+        pub(super) const fn char_to_kind(c: char) -> SyntaxKind {
             match c {
                 $(
                     $char => $kind,
@@ -249,14 +270,23 @@ macro_rules! define_punct_lexers {
             }
         }
 
-         pub const fn kind_to_char(kind: SyntaxKind) -> char {
-             match kind {
-                 $(
-                     $kind => $char,
-                 )*
-                 _ => panic!("not a PUNCTUATION kind"),
-             }
-         }
+        ///  returns `char` of corresponding `SyntaxKind`
+        ///
+        /// # Parameters
+        ///
+        ///  - SyntaxKind
+        ///
+        /// # Panic
+        ///
+        /// panics if given `SyntaxKind` is not a punctuation Kind
+        pub(crate) const fn kind_to_char(kind: SyntaxKind) -> char {
+            match kind {
+                $(
+                    $kind => $char,
+                )*
+                _ => panic!("not a PUNCTUATION kind"),
+            }
+        }
 
         #[test]
         fn test_punct_trait() {
@@ -310,6 +340,7 @@ macro_rules! K {
     };
 }
 
+/// represents a single token emitted by `Lexer`
 #[derive(Clone, PartialEq, Eq)]
 pub struct TokenData {
     text: String,
@@ -352,8 +383,14 @@ impl Debug for TokenData {
     }
 }
 
+/// The `Lexer`
+///
+/// # Fields
+///
+/// - `source`: the input for lexing `&str`
+/// - `tokens`: stores the lexed [`Token`]
 #[derive(Debug)]
-pub struct Lexer<'a> {
+pub(crate) struct Lexer<'a> {
     source: &'a str,
     tokens: Vec<Token>,
 }
@@ -366,19 +403,24 @@ impl<'a> Lexer<'a> {
             tokens: Vec::new(),
         }
     }
+
     /// Returns a reference to the lex of this [`Lexer`].
     pub fn lex(&mut self) -> &Vec<Token> {
         let mut chars = self.source.char_indices().peekable();
-        let punct = punctuation_tokenizers();
 
         let eof_offset = self.source.chars().count();
 
         while let Some(&(_, char)) = chars.peek() {
-            if let Some(&lex_fn) = punct.get(&char) {
+            if let Some(&lex_fn) = punctuation_tokenizers().get(&char) {
                 if let Some(tok) = lex_fn(&mut chars) {
                     self.tokens.push(tok);
                     continue;
                 }
+            }
+
+            if let Some(tok) = lex_line_ending(&mut chars) {
+                self.tokens.push(tok);
+                continue;
             }
 
             // TODO: write test
@@ -397,7 +439,7 @@ impl<'a> Lexer<'a> {
                 continue;
             }
 
-            chars.next(); 
+            chars.next();
         }
 
         self.tokens.push(token!(SyntaxKind::Eof, '\0', eof_offset));
@@ -405,7 +447,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-trait NeorgChar: private::Sealed {
+trait NeorgChar: char::Sealed {
     fn is_neorg_char(&self) -> bool;
 }
 
@@ -430,9 +472,6 @@ define_punct_lexers![
     ('@', lex_at, SyntaxKind::At),
     ('.', lex_dot, SyntaxKind::Dot),
     ('\t', lex_tab, SyntaxKind::Tab), // Tabs are not expanded to spaces
-    ('\n', lex_newline, SyntaxKind::NewLine),
-    ('\r', lex_carriage_return, SyntaxKind::CarriageReturn),
-    ('\u{000C}', lex_form_feed, SyntaxKind::FormFeed),
     ('#', lex_pound, SyntaxKind::Pound),
     ('[', lex_l_brace, SyntaxKind::LSquare),
     (']', lex_r_brace, SyntaxKind::RSquare),
@@ -453,6 +492,15 @@ define_punct_lexers![
     ('!', lex_exclamation, SyntaxKind::Exclamation),
 ];
 
+/// # Escaping
+///
+/// A single [`character`] can be escaped if it is immediately preceded by a backslash,
+/// `|\|` (`U+005C`).
+///
+/// Escaping renders the next character verbatim. Any [`character`] may be escaped
+/// apart from `characters` within free-form and ranged verbatim segments (see free-form
+/// attached modifiers and verbatim ranged tags).
+/// -- TODO: should we check `verbatim` at lexing stage
 fn lex_escaped_char(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
     let (offset, char) = *chars.peek()?;
     if char != '\\' {
@@ -469,34 +517,41 @@ fn lex_escaped_char(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
             ));
         }
     }
-    
+
     // if there is no punctuation char after `\` then lex it as `ForwardSlash`
     Some(token!(SyntaxKind::ForwardSlash, '\\', offset))
 }
 
-/// eats SyntaxKind `Text` and `WhiteSpace`
+/// # Words
+///  
+///  The Norg format is designed to be parsed on a word-by-word basis from left-to-right through the
+///  entire document _in a single pass_. This is possible because the language is [free-form], meaning
+///  that whitespace has no semantic meaning, and because the markup follows strict rules which are
+///  outlined in the later sections of this document.
+///
+///  A `word` is considered to be any combination of `regular characters`.
 fn lex_text(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
-    let (offset, _char) = *chars.peek()?;
+    let (offset, _) = *chars.peek()?;
+    // -- NOTE: we might need lex_verbatim function
+
+    // no assestion and return None as we want everything to fall here
+
     let mut text = String::new();
-    while let Some((_o, c)) = chars.peek() {
-        if c.is_neorg_char() {
+
+    while let Some((_, char)) = chars.peek() {
+        if char.is_neorg_char() {
             break;
         }
-        text.push(*c);
+        text.push(*char);
         chars.next();
     }
+
     Some(token!(SyntaxKind::Word, text, offset))
 }
 
-/// helper trait to seal ZsWhitespace trait only on char
-mod private {
-    pub(super) trait Sealed {}
-    impl Sealed for char {}
-}
-
-/// now ZsWhitespace trait can only be implemented on char
-#[allow(clippy::wrong_self_convention, dead_code)]
-trait NorgChar: private::Sealed {
+/// helper trait can only be implemented on char
+#[allow(clippy::wrong_self_convention)]
+trait NorgChar: char::Sealed {
     fn is_zs_whitespace(self) -> bool;
     fn is_line_ending(self) -> bool;
 }
@@ -553,6 +608,79 @@ impl NorgChar for char {
         matches!(self, '\u{000A}' | '\u{000C}' | '\u{000D}')
     }
 }
+
+/// The following chars are considered line endings:
+///
+/// - `U+000A` — Line Feed (\n)
+/// - `U+000C` — Form Feed
+/// - `U+000D` — Carriage Return (\r)
+///
+/// The following line ending combinations are permitted:
+///
+/// - A single line feed (\n)
+/// - A single carriage return (\r)
+/// - A CRLF combo — carriage return immediately followed by line feed (\r\n)
+///
+/// This mirrors real-world newline conventions:
+///
+/// | OS               | Line Ending |
+/// |------------------|-------------|
+/// | Unix/Linux/macOS | \n          |
+/// | Windows          | \r\n        |
+/// | Classic Mac      | \r          |
+///
+fn lex_line_ending(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
+    let (offset, char) = *chars.peek()?;
+
+    if !char.is_line_ending() {
+        return None;
+    }
+
+    chars.next();
+
+    if char == '\r' {
+        if let Some((_, next_char)) = chars.peek() {
+            if *next_char == '\n' {
+                chars.next();
+                return Some(token!(SyntaxKind::LineEnding, "\r\n", offset));
+            }
+        }
+    }
+
+    Some(token!(SyntaxKind::LineEnding, char, offset))
+}
+
+#[test]
+fn test_lex_line_endings() {
+
+    fn check(input: &str, expected: &str) {
+        let mut chars = input.char_indices().peekable();
+        let token = lex_line_ending(&mut chars).expect("Expected line ending");
+        assert_eq!(token.text(), expected);
+    }
+
+    // U+000A (Line Feed)
+    check("\nrest", "\n");
+
+    // U+000C (Form Feed)
+    check("\u{000C}next", "\u{000C}");
+
+    // U+000D (Carriage Return)
+    check("\rnext", "\r");
+
+    // U+000D U+000A (CRLF)
+    check("\r\nnext", "\r\n");
+
+    // Invalid: No line ending
+    let mut it = "hello".char_indices().peekable();
+    assert!(lex_line_ending(&mut it).is_none());
+
+    // Only \r followed by EOF — should not panic
+    let mut it = "\r".char_indices().peekable();
+    let tok = lex_line_ending(&mut it).unwrap();
+    assert_eq!(tok.text(), "\r");
+}
+
 
 /// # Whitespace
 ///
@@ -639,12 +767,6 @@ mod test {
         assert!('='.is_neorg_char());
         assert!('\u{2003}'.is_neorg_char());
         assert!(!'a'.is_neorg_char());
-    }
-
-    #[test]
-    fn test_char_to_kind_macro() {
-        assert_eq!(K!('='), SyntaxKind::Equal);
-        assert_eq!(K!('*'), SyntaxKind::Asterisk);
     }
 
     #[test]

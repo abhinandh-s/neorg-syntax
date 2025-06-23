@@ -21,9 +21,7 @@ fn main() {
     let italics04 = "/ this is not italics /";
     let heading = "!%/*this is a nested inline text*/%!";
 
-    let mut lexer = Lexer::new(heading);
-    let tokens = lexer.lex();
-    let mut p = Parser::new(tokens.to_vec());
+    let mut p = Parser::new(heading);
 
     parse_doc(&mut p);
     p.debug_tree();
@@ -46,18 +44,7 @@ fn main() {
 }
 
 pub fn print_cst(source: &str) {
-    let mut lexer = Lexer::new(source);
-    let tokens = lexer.lex();
-    let mut p = Parser::new(tokens.to_vec());
-
+    let mut p = Parser::new(source);
     parse_doc(&mut p);
     p.debug_tree();
-}
-
-pub fn print_tokens(lexer: &mut Lexer) {
-    let tokens = lexer.lex();
-
-    tokens.iter().for_each(|token| {
-        println!("{:?}", token);
-    });
 }

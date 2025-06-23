@@ -3,9 +3,6 @@
 //! Token will have just offset
 //! SyntaxNode will get Span
 
-
-use std::fmt::{Debug, Display};
-
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Span {
     /// start character offset of the SyntaxNode
@@ -24,26 +21,13 @@ macro_rules! span {
     };
 }
 
-pub trait SpanOps {
-    fn span(&self) -> Span;
-}
-
-impl SpanOps for str {
-    fn span(&self) -> Span {
-        Span {
-            start: 0,
-            end: self.chars().count(),
-        }
-    }
-}
-
-impl Display for Span {
+impl std::fmt::Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[ span: {}..{} ]", self.start, self.end)
     }
 }
 
-impl Debug for Span {
+impl std::fmt::Debug for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[ span: {}..{} ]", self.start, self.end)
     }
@@ -95,7 +79,7 @@ pub mod lsp {
         pub fn to_char_offset(&self, text: &str) -> Span {
             let s = byte_to_char_idx(text, self.start);
             let e = byte_to_char_idx(text, self.end);
-            text[s..e].span()
+            span!(s, e)
         }
 
         /// returns (beginning of char_offset, char len)

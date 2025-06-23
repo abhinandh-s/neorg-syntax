@@ -1,10 +1,12 @@
+#![allow(dead_code)]
+
 use std::sync::Arc;
 
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
 use crate::*;
 
-pub fn collect_emph_nodes(node: &InnerNode, output: &mut Vec<Arc<InnerNode>>) {
+fn collect_emph_nodes(node: &InnerNode, output: &mut Vec<Arc<InnerNode>>) {
     if node.kind == SyntaxKind::Emph {
         output.push(Arc::new(node.clone()));
     }
@@ -19,7 +21,7 @@ pub fn collect_emph_nodes(node: &InnerNode, output: &mut Vec<Arc<InnerNode>>) {
     }
 }
 
-pub fn collect_error_nodes(node: &InnerNode, output: &mut Vec<Arc<ErrorNode>>) {
+fn collect_error_nodes(node: &InnerNode, output: &mut Vec<Arc<ErrorNode>>) {
     for child in &node.children {
         match child {
             SyntaxElement::Error(err) => {
@@ -63,7 +65,7 @@ pub fn offset_to_position(text: &str, offset: usize) -> Position {
 }
 
 /// Collect LSP ranges from all ErrorNodes recursively in the syntax tree.
-pub fn collect_error_ranges(node: &InnerNode, source_text: &str, output: &mut Vec<Diagnostic>) {
+fn collect_error_ranges(node: &InnerNode, source_text: &str, output: &mut Vec<Diagnostic>) {
     for child in &node.children {
         match child {
             SyntaxElement::Error(err) => {
@@ -87,7 +89,7 @@ pub fn collect_error_ranges(node: &InnerNode, source_text: &str, output: &mut Ve
     }
 }
 
-pub fn extract_text_from_emph(emph: &InnerNode) -> String {
+fn extract_text_from_emph(emph: &InnerNode) -> String {
     emph.children
         .iter()
         .filter_map(|el| {
