@@ -39,11 +39,7 @@ pub(crate) type Token = Arc<TokenData>;
 #[macro_export]
 macro_rules! token {
     ($kind:expr, $text:expr, $offset:expr) => {
-        std::sync::Arc::new(TokenData {
-            kind: $kind,
-            text: $text.into(),
-            offset: $offset,
-        })
+        std::sync::Arc::new($crate::TokenData::new($kind, $text.into(), $offset))
     };
 }
 
@@ -351,8 +347,8 @@ pub struct TokenData {
 /// set and get methods for TokenData
 impl TokenData {
     /// Creates a new [`TokenData`].
-    pub fn new(text: String, kind: SyntaxKind, offset: usize) -> Self {
-        Self { text, kind, offset }
+    pub fn new(kind: SyntaxKind, text: String, offset: usize) -> Self {
+        Self { kind, text, offset }
     }
 
     /// Returns a reference to the text of this [`TokenData`].
@@ -368,6 +364,16 @@ impl TokenData {
     /// Returns the offset of this [`TokenData`].
     pub fn offset(&self) -> usize {
         self.offset
+    }
+
+    /// Returns the text len of this [`TokenData`].
+    pub fn len(&self) -> usize {
+        self.text.len()
+    }
+
+    /// Returns the is empty of this [`TokenData`].
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -550,6 +556,9 @@ fn lex_text(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
 }
 
 /// helper trait can only be implemented on char
+///
+/// `clippy` will complain about the `self` in trait.
+/// since we Sealed the trait on `char` puting `self` is fine
 #[allow(clippy::wrong_self_convention)]
 trait NorgChar: char::Sealed {
     fn is_zs_whitespace(self) -> bool;
@@ -652,7 +661,6 @@ fn lex_line_ending(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
 
 #[test]
 fn test_lex_line_endings() {
-
     fn check(input: &str, expected: &str) {
         let mut chars = input.char_indices().peekable();
         let token = lex_line_ending(&mut chars).expect("Expected line ending");
@@ -680,7 +688,6 @@ fn test_lex_line_endings() {
     let tok = lex_line_ending(&mut it).unwrap();
     assert_eq!(tok.text(), "\r");
 }
-
 
 /// # Whitespace
 ///
@@ -723,6 +730,20 @@ fn lex_white_space(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
         }
     }
     Some(token!(SyntaxKind::WhiteSpace, text, offset))
+}
+
+#[test]
+fn test_whitespace() {
+    let ws = concat!(
+        '\u{0020}', '\u{00A0}', '\u{1680}', '\u{2000}', '\u{2001}', '\u{2002}', '\u{2003}',
+        '\u{2004}', '\u{2005}', '\u{2006}', '\u{2007}', '\u{2008}', '\u{2009}', '\u{200A}',
+        '\u{202F}', '\u{205F}', '\u{3000}'
+    );
+    let spoiled = ws.to_owned() + "!@#$%^&*()";
+    let mut chars = spoiled.char_indices().peekable();
+    let token = lex_white_space(&mut chars).expect("Expected WhiteSpace");
+    let text = &token.text;
+    assert_eq!(text, ws);
 }
 
 #[cfg(test)]

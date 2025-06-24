@@ -10,15 +10,21 @@ pub struct Marker(pub usize);
 pub struct Parser {
     source: Vec<Token>,
     cursor: usize,
+    /// Whether the parser has the expected set of open/close delimiters. This
+    /// only ever transitions from `true` to `false`.
+    balanced: bool,
+    nodes_two: Vec<SyntaxNode>,
     nodes: InnerNode, // top-level node
 }
 
 impl Parser {
     pub fn new(source: &str) -> Self {
-        let mut lexer = Lexer::new(source); 
+        let mut lexer = Lexer::new(source);
         Self {
             source: lexer.lex().to_vec(),
             cursor: 0,
+            balanced: false,
+            nodes_two: Vec::new(),
             nodes: InnerNode::new(SyntaxKind::Document),
         }
     }
@@ -143,6 +149,14 @@ impl Parser {
                 .push(SyntaxElement::Error(Arc::new(error)));
         }
     }
+
+    pub fn balanced(&self) -> bool {
+        self.balanced
+    }
+
+    pub fn set_balanced(&mut self, balanced: bool) {
+        self.balanced = balanced;
+    }
 }
 impl Parser {
     pub fn debug_tree(&self) {
@@ -244,7 +258,7 @@ pub fn parse_heading(p: &mut Parser) {
 pub fn parse_paragraph_segment(p: &mut Parser) {
     let m = p.start();
     while !p.at(SyntaxKind::LineEnding) {
-       p.eat(); 
+        p.eat();
     }
     p.wrap(m, SyntaxKind::ParaSegment);
 }
@@ -281,7 +295,9 @@ pub fn parse_text_chunk(p: &mut Parser) {
                     this.offset()
                 }, // error
             };
-            p.nodes.children.push(SyntaxElement::Error(Arc::new(error)));
+            p.nodes
+                .children
+                .push(SyntaxElement::Error(Arc::new(error)));
         } else {
             break;
         }
@@ -385,6 +401,26 @@ macro_rules! assert_tree {
         expect_test::expect![$expect].assert_eq(&actual);
     }};
 }
+
+#[macro_export]
+macro_rules! insta_tree {
+    ($fn_name:ident, $text:literal) => {
+        #[test]
+        fn $fn_name() {
+            let key = "INSTA_UPDATE";
+            unsafe {
+                std::env::set_var(key, "no");
+            }
+            let mut p = Parser::new($text);
+            parse_doc(&mut p);
+            let actual = p.nodes.pretty_string();
+            insta::assert_snapshot!(actual)
+        }
+    };
+}
+
+insta_tree!(empty_file, "");
+insta_tree!(italics_001, "/this is italics with no errors/");
 
 #[test]
 fn basic_emph() {

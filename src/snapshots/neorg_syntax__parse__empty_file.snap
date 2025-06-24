@@ -1,0 +1,6 @@
+---
+source: src/parse.rs
+expression: actual
+---
+DOCUMENT
+│   EOF@0 "\0"

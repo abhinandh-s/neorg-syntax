@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::sync::Arc;
 
-use crate::{Span, SyntaxKind, Token};
+use crate::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SyntaxElement {
@@ -12,6 +12,21 @@ pub(crate) enum SyntaxElement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyntaxNode(SyntaxElement);
+
+#[allow(dead_code)]
+impl SyntaxNode {
+    pub(crate) fn leaf(token: Token) -> SyntaxNode {
+        SyntaxNode(SyntaxElement::Leaf(LeafNode { token }))
+    }
+
+    pub(crate) fn inner(kind: SyntaxKind, erroneous: bool, children: Vec<SyntaxElement>) -> SyntaxNode {
+        SyntaxNode(SyntaxElement::Inner(InnerNode { kind, erroneous, children }.into()))
+    }
+
+    pub(crate) fn error(kind: SyntaxKind, text: String, hint: String, span: usize) -> SyntaxNode {
+        SyntaxNode(SyntaxElement::Error(ErrorNode { kind , text, hint, span }.into()))
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ErrorNode {
@@ -26,6 +41,24 @@ pub struct LeafNode {
     pub token: Token,
 }
 
+impl LeafNode {
+    pub fn new(token: Token) -> Self {
+        Self { token }
+    }
+    pub fn span(&self) -> Span {
+        let start = self.token.offset();
+        Span { start, end: start + self.token.len() }
+    }
+}
+
+#[test]
+fn leaf_span() {
+    let tok = token!(SyntaxKind::Word, "this is a test" ,45);
+    let leaf = LeafNode::new(tok);
+    let span = leaf.span();
+    assert_eq!(span, span!(45, 59))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct InnerNode {
     pub(crate) kind: SyntaxKind,
@@ -33,7 +66,6 @@ pub(crate) struct InnerNode {
     pub(crate) erroneous: bool,
     pub(crate) children: Vec<SyntaxElement>,
 }
-
 
 #[allow(dead_code)]
 impl SyntaxElement {
