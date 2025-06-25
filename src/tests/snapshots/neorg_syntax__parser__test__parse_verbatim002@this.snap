@@ -1,0 +1,14 @@
+---
+source: src/parser.rs
+expression: str
+---
+Verbatim
+  WhiteSpace: " "
+  Word: "this"
+  WhiteSpace: " "
+  Word: "is"
+  WhiteSpace: " "
+  Word: "a"
+  WhiteSpace: " "
+  Word: "test"
+  WhiteSpace: " "

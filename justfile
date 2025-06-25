@@ -1,6 +1,9 @@
 dev:
  nix develop --command fish
 
+snap:
+  INSTA_UPDATE=always cargo test
+
 clippy:
   cargo clippy
 

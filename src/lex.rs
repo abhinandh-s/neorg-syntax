@@ -411,7 +411,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns a reference to the lex of this [`Lexer`].
-    pub fn lex(&mut self) -> &Vec<Token> {
+    pub fn lex(&mut self) -> Vec<Token> {
         let mut chars = self.source.char_indices().peekable();
 
         let eof_offset = self.source.chars().count();
@@ -449,7 +449,7 @@ impl<'a> Lexer<'a> {
         }
 
         self.tokens.push(token!(SyntaxKind::Eof, '\0', eof_offset));
-        &self.tokens
+        std::mem::take(&mut self.tokens)
     }
 }
 

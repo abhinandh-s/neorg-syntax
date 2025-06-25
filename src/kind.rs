@@ -72,9 +72,15 @@ pub enum SyntaxKind {
 }
 
 impl SyntaxKind {
+     /// Whether this is an error.
+    pub fn is_error(self) -> bool {
+        self == Self::Error
+    }
+
     pub const fn text(&self) -> char {
         kind_to_char(*self)
     }
+    
     pub const fn is_inline_expr(&self) -> bool {
         matches!(
             self,

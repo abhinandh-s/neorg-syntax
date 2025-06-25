@@ -1,144 +1,319 @@
-use std::fmt::Write;
+#![allow(dead_code)]
+
 use std::sync::Arc;
 
-use crate::*;
+use crate::{Span, SyntaxKind, Token};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum SyntaxElement {
-    Inner(Arc<InnerNode>),
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SyntaxNode(Repr);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum Repr {
     Leaf(LeafNode),
+    Inner(Arc<InnerNode>),
     Error(Arc<ErrorNode>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SyntaxNode(SyntaxElement);
-
-#[allow(dead_code)]
 impl SyntaxNode {
-    pub(crate) fn leaf(token: Token) -> SyntaxNode {
-        SyntaxNode(SyntaxElement::Leaf(LeafNode { token }))
+    /// Create a new leaf node.
+    pub fn leaf(tok: Token) -> Self {
+        Self(Repr::Leaf(LeafNode::new(tok)))
     }
 
-    pub(crate) fn inner(kind: SyntaxKind, erroneous: bool, children: Vec<SyntaxElement>) -> SyntaxNode {
-        SyntaxNode(SyntaxElement::Inner(InnerNode { kind, erroneous, children }.into()))
+    /// Create a new inner node with children.
+    pub fn inner(kind: SyntaxKind, children: Vec<SyntaxNode>) -> Self {
+        Self(Repr::Inner(Arc::new(InnerNode::new(kind, children))))
     }
 
-    pub(crate) fn error(kind: SyntaxKind, text: String, hint: String, span: usize) -> SyntaxNode {
-        SyntaxNode(SyntaxElement::Error(ErrorNode { kind , text, hint, span }.into()))
+    /// Create a new error node.
+    pub fn error(error: SyntaxError, text: impl Into<String>) -> Self {
+        Self(Repr::Error(Arc::new(ErrorNode::new(error, text))))
+    }
+
+    /// Create a dummy node of the given kind.
+    ///
+    /// Panics if `kind` is `SyntaxKind::Error`.
+    #[track_caller]
+    pub const fn placeholder(kind: SyntaxKind) -> Self {
+        if matches!(kind, SyntaxKind::Error) {
+            panic!("cannot create error placeholder");
+        }
+        Self(Repr::Leaf(LeafNode {
+            kind,
+            text: String::new(),
+            span: Span::detached(),
+        }))
+    }
+
+    /// The type of the node.
+    pub fn kind(&self) -> SyntaxKind {
+        match &self.0 {
+            Repr::Leaf(leaf) => leaf.kind,
+            Repr::Inner(inner) => inner.kind,
+            Repr::Error(_) => SyntaxKind::Error,
+        }
+    }
+
+    /// The span of the node.
+    pub fn span(&self) -> Span {
+        match &self.0 {
+            Repr::Leaf(leaf) => leaf.span,
+            Repr::Inner(inner) => inner.span,
+            Repr::Error(node) => node.error.span,
+        }
+    }
+
+    /// The text of the node if it is a leaf or error node.
+    ///
+    /// Returns the empty string if this is an inner node.
+    pub fn text(&self) -> &String {
+        static EMPTY: String = String::new();
+        match &self.0 {
+            Repr::Leaf(leaf) => &leaf.text,
+            Repr::Inner(_) => &EMPTY,
+            Repr::Error(node) => &node.text,
+        }
+    }
+
+    /// Extract the text from the node.
+    ///
+    /// Builds the string if this is an inner node.
+    pub fn into_text(self) -> String {
+        match self.0 {
+            Repr::Leaf(leaf) => leaf.text,
+            Repr::Inner(inner) => inner
+                .children
+                .iter()
+                .cloned()
+                .map(Self::into_text)
+                .collect(),
+            Repr::Error(node) => node.text.clone(),
+        }
+    }
+
+    /// The node's children.
+    pub fn children(&self) -> std::slice::Iter<'_, SyntaxNode> {
+        match &self.0 {
+            Repr::Leaf(_) | Repr::Error(_) => [].iter(),
+            Repr::Inner(inner) => inner.children.iter(),
+        }
+    }
+
+    /// Whether the node or its children contain an error.
+    pub fn erroneous(&self) -> bool {
+        match &self.0 {
+            Repr::Leaf(_) => false,
+            Repr::Inner(inner) => inner.erroneous,
+            Repr::Error(_) => true,
+        }
+    }
+
+    /// The error messages for this node and its descendants.
+    pub fn errors(&self) -> Vec<SyntaxError> {
+        if !self.erroneous() {
+            return vec![];
+        }
+
+        if let Repr::Error(node) = &self.0 {
+            vec![node.error.clone()]
+        } else {
+            self.children()
+                .filter(|node| node.erroneous())
+                .flat_map(|node| node.errors())
+                .collect()
+        }
+    }
+
+    /// Add a user-presentable hint if this is an error node.
+    pub fn hint(&mut self, hint: impl Into<String>) {
+        if let Repr::Error(node) = &mut self.0 {
+            Arc::make_mut(node).hint(hint);
+        }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ErrorNode {
-    pub kind: SyntaxKind,
-    pub text: String,
-    pub hint: String,
-    pub span: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LeafNode {
-    pub token: Token,
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct LeafNode {
+    /// What kind of node this is (each kind would have its own struct in a
+    /// strongly typed AST).
+    kind: SyntaxKind,
+    /// The source text of the node.
+    text: String,
+    /// The node's span.
+    span: Span,
 }
 
 impl LeafNode {
-    pub fn new(token: Token) -> Self {
-        Self { token }
-    }
-    pub fn span(&self) -> Span {
-        let start = self.token.offset();
-        Span { start, end: start + self.token.len() }
-    }
-}
-
-#[test]
-fn leaf_span() {
-    let tok = token!(SyntaxKind::Word, "this is a test" ,45);
-    let leaf = LeafNode::new(tok);
-    let span = leaf.span();
-    assert_eq!(span, span!(45, 59))
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct InnerNode {
-    pub(crate) kind: SyntaxKind,
-    /// Whether this node or any of its children are erroneous.
-    pub(crate) erroneous: bool,
-    pub(crate) children: Vec<SyntaxElement>,
-}
-
-#[allow(dead_code)]
-impl SyntaxElement {
-    pub fn span(&self) -> Span {
-        match self {
-            SyntaxElement::Leaf(leaf) => {
-                let start = leaf.token.offset();
-                let end = start + leaf.token.text().len();
-                Span { start, end }
-            }
-            SyntaxElement::Inner(inner) => inner.span(),
-            SyntaxElement::Error(err) => Span {
-                start: err.span,
-                end: err.span,
+    /// Create a new leaf node.
+    #[track_caller]
+    fn new(token: Token) -> Self {
+        debug_assert!(!token.kind().is_error());
+        Self {
+            kind: token.kind(),
+            text: token.text().into(),
+            span: Span {
+                start: token.offset(),
+                end: token.offset() + token.len(),
             },
         }
     }
+
+    /// The byte length of the node in the source text.
+    fn len(&self) -> usize {
+        self.text.len()
+    }
+
+    /// Whether the two leaf nodes are the same apart from spans.
+    fn spanless_eq(&self, other: &Self) -> bool {
+        self.kind == other.kind && self.text == other.text
+    }
+}
+
+impl std::fmt::Debug for LeafNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}: {:?}", self.kind, self.text)
+    }
+}
+
+/// An inner node in the untyped syntax tree.
+#[derive(Clone, Eq, PartialEq, Hash)]
+struct InnerNode {
+    /// What kind of node this is (each kind would have its own struct in a
+    /// strongly typed AST).
+    kind: SyntaxKind,
+    /// The node's span.
+    span: Span,
+    /// Whether this node or any of its children are erroneous.
+    erroneous: bool,
+    /// This node's children, losslessly make up this node.
+    children: Vec<SyntaxNode>,
 }
 
 impl InnerNode {
-    pub fn pretty_string(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(&mut out, "{}", self.kind);
-        for child in &self.children {
-            child.write_pretty(&mut out, 1);
+    /// Create a new inner node with the given kind and children.
+    #[track_caller]
+    fn new(kind: SyntaxKind, children: Vec<SyntaxNode>) -> Self {
+        debug_assert!(!kind.is_error());
+
+        let mut erroneous = false;
+
+        for child in &children {
+            erroneous |= child.erroneous();
         }
-        out
-    }
-    pub fn span(&self) -> Span {
-        let start = self.children.first().map_or(1_usize, |_| 1_usize);
-        Span { start, end: start }
-    }
-}
 
-impl SyntaxElement {
-    pub fn write_pretty(&self, out: &mut String, indent: usize) {
-        let pad = "│   ".repeat(indent);
-
-        match self {
-            SyntaxElement::Leaf(leaf) => {
-                let token = &leaf.token;
-                let _ = writeln!(
-                    out,
-                    "{}{}@{} {:?}",
-                    pad,
-                    token.kind(),
-                    token.offset(),
-                    token.text()
-                );
-            }
-            SyntaxElement::Inner(inner) => {
-                let _ = writeln!(out, "{}{}", pad, inner.kind);
-                for child in &inner.children {
-                    child.write_pretty(out, indent + 1);
-                }
-            }
-            SyntaxElement::Error(err) => {
-                let _ = writeln!(
-                    out,
-                    "{}{}@{} > {} > {}",
-                    pad, err.kind, err.span, err.text, err.hint
-                );
-            }
-        }
-    }
-}
-
-impl InnerNode {
-    pub fn new(kind: SyntaxKind) -> Self {
         Self {
             kind,
-            erroneous: false,
-            children: Vec::new(),
+            span: Span::default(),
+            erroneous,
+            children,
         }
+    }
+}
+
+impl std::fmt::Debug for InnerNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self.kind)?;
+        if !self.children.is_empty() {
+            f.write_str(" ")?;
+            f.debug_list().entries(&self.children).finish()?;
+        }
+        Ok(())
+    }
+}
+
+/// An error node in the untyped syntax tree.
+#[derive(Clone, Eq, PartialEq, Hash)]
+struct ErrorNode {
+    /// The source text of the node.
+    text: String,
+    /// The syntax error.
+    error: SyntaxError,
+}
+
+impl ErrorNode {
+    /// Create new error node.
+    fn new(error: SyntaxError, text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            error,
+        }
+    }
+
+    /// The byte length of the node in the source text.
+    fn len(&self) -> usize {
+        self.text.len()
+    }
+
+    /// Add a user-presentable hint to this error node.
+    fn hint(&mut self, hint: impl Into<String>) {
+        self.error.hints.push(hint.into());
+    }
+
+    /// Whether the two leaf nodes are the same apart from spans.
+    fn spanless_eq(&self, other: &Self) -> bool {
+        self.text == other.text && self.error.spanless_eq(&other.error)
+    }
+}
+
+impl std::fmt::Debug for ErrorNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Error: {:?} ({})", self.text, self.error.message)
+    }
+}
+
+/// A syntactical error.
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct SyntaxError {
+    /// The node's span.
+    pub span: Span,
+    /// The error message.
+    pub message: String,
+    /// Additional hints to the user, indicating how this error could be avoided
+    /// or worked around.
+    pub hints: Vec<String>,
+}
+
+impl SyntaxError {
+    /// Create a new detached syntax error.
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            span: Span::default(),
+            message: message.into(),
+            hints: vec![],
+        }
+    }
+
+    /// Whether the two errors are the same apart from spans.
+    fn spanless_eq(&self, other: &Self) -> bool {
+        self.message == other.message && self.hints == other.hints
+    }
+}
+
+impl SyntaxNode {
+    pub fn pretty_string(&self) -> String {
+        fn fmt(node: &SyntaxNode, indent: usize, output: &mut String) {
+            let padding = "  ".repeat(indent);
+            match &node.0 {
+                Repr::Leaf(leaf) => {
+                    output.push_str(&format!("{padding}{:?}: {:?}\n", leaf.kind, leaf.text));
+                }
+                Repr::Inner(inner) => {
+                    output.push_str(&format!("{padding}{:?}\n", inner.kind));
+                    for child in &inner.children {
+                        fmt(child, indent + 1, output);
+                    }
+                }
+                Repr::Error(err) => {
+                    output.push_str(&format!(
+                        "{padding}Error: {:?} ({})\n",
+                        err.text, err.error.message
+                    ));
+                }
+            }
+        }
+
+        let mut out = String::new();
+        fmt(self, 0, &mut out);
+        out
     }
 }

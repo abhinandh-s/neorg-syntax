@@ -48,3 +48,6 @@ macro_rules! syntax_set {
         SET
     }}
 }
+
+/// Syntax kinds that can start a statement.
+pub const NON_VERBATIM: SyntaxSet = syntax_set!(Word, WhiteSpace);

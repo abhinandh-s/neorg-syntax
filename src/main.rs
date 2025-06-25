@@ -21,10 +21,12 @@ fn main() {
     let italics04 = "/ this is not italics /";
     let heading = "!%/*this is a nested inline text*/%!";
 
-    let mut p = Parser::new(heading);
-
-    parse_doc(&mut p);
-    p.debug_tree();
+    let mut p = Parser::new("this is a ");
+    crate::parse_verbatim(&mut p);
+    assert_eq!(p.nodes().len(), 1);
+    let vec = p.nodes(); //.pretty_string();
+    let str = vec[0].pretty_string();
+    eprintln!("{}", str);
 
     // print_cst(source);
 
@@ -41,10 +43,4 @@ fn main() {
     // for range in &ranges {
     //     println!("LSP error range: {:?}", range);
     // }
-}
-
-pub fn print_cst(source: &str) {
-    let mut p = Parser::new(source);
-    parse_doc(&mut p);
-    p.debug_tree();
 }

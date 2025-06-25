@@ -45,6 +45,9 @@ impl Span {
     pub fn end(&self) -> usize {
         self.end
     }
+    pub const fn detached() -> Span {
+        Self { start: 1, end: 1 }
+    }
 }
 
 impl Default for Span {
