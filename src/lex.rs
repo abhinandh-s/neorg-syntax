@@ -257,7 +257,7 @@ macro_rules! define_punct_lexers {
         /// # Panic
         ///
         /// panics if given `char` is not a punctuation char
-        pub(super) const fn char_to_kind(c: char) -> SyntaxKind {
+        pub const fn char_to_kind(c: char) -> SyntaxKind {
             match c {
                 $(
                     $char => $kind,
@@ -275,13 +275,35 @@ macro_rules! define_punct_lexers {
         /// # Panic
         ///
         /// panics if given `SyntaxKind` is not a punctuation Kind
-        pub(crate) const fn kind_to_char(kind: SyntaxKind) -> char {
+        pub const fn kind_to_char(kind: SyntaxKind) -> char {
             match kind {
                 $(
                     $kind => $char,
                 )*
                 _ => panic!("not a PUNCTUATION kind"),
             }
+        }
+
+        /// .
+        pub fn len_utf16(kind: SyntaxKind) -> usize {
+            match kind {
+                $(
+                    $kind => $char.len_utf16(),
+                )*
+                _ => panic!("not a PUNCTUATION kind"),
+            }
+
+        }
+
+        /// .
+        pub fn is_punctuation_kind(kind: SyntaxKind) -> bool {
+            match kind {
+                $(
+                    $kind => true,
+                )*
+                _ => false,
+            }
+
         }
 
         #[test]
@@ -730,6 +752,51 @@ fn lex_white_space(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
         }
     }
     Some(token!(SyntaxKind::WhiteSpace, text, offset))
+}
+
+struct Pos {
+    line: usize,
+    col: usize,
+}
+
+/// .
+#[derive(Debug)]
+pub struct Spanned<T> {
+    item: T,
+    span: crate::Span,
+}
+/// .
+pub fn auto_spans(tokens: Vec<Token>) -> Vec<Spanned<Token>> {
+    let mut pos: usize = 0;
+    let mut result = Vec::new();
+    for i in tokens {
+        let start = pos;
+        if i.
+        let end = start + i.text().len();
+        result.push(Spanned {
+            item: i,
+            span: crate::Span { start: pos, end },
+        });
+        pos = end
+    }
+    result
+}
+
+#[test]
+fn auto() {
+    let lexed = Lexer::new("this is a test").lex();
+    let spanned = auto_spans(lexed);
+    let snapshot_path = {
+        let root = env!("CARGO_MANIFEST_DIR");
+        std::path::Path::new(root)
+            .join("tests")
+            .join("snapshots")
+            .join("lexer")
+    };
+
+    insta::with_settings!({ snapshot_path => snapshot_path, prepend_module_to_snapshot => false }, {
+        insta::assert_debug_snapshot!(spanned);
+    });
 }
 
 #[test]

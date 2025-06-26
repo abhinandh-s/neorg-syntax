@@ -20,13 +20,8 @@ fn main() {
     let italics03 = "/this is italics/";
     let italics04 = "/ this is not italics /";
     let heading = "!%/*this is a nested inline text*/%!";
-
+    
     let mut p = Parser::new("this is a ");
-    crate::parse_verbatim(&mut p);
-    assert_eq!(p.nodes().len(), 1);
-    let vec = p.nodes(); //.pretty_string();
-    let str = vec[0].pretty_string();
-    eprintln!("{}", str);
 
     // print_cst(source);
 

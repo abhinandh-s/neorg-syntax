@@ -1,0 +1,39 @@
+---
+source: src/lex.rs
+assertion_line: 773
+expression: spanned
+---
+[
+    Spanned {
+        item: WORD@0 "this",
+        span: [ span: 0..4 ],
+    },
+    Spanned {
+        item: WHITE_SPACE@4 " ",
+        span: [ span: 4..5 ],
+    },
+    Spanned {
+        item: WORD@5 "is",
+        span: [ span: 5..7 ],
+    },
+    Spanned {
+        item: WHITE_SPACE@7 " ",
+        span: [ span: 7..8 ],
+    },
+    Spanned {
+        item: WORD@8 "a",
+        span: [ span: 8..9 ],
+    },
+    Spanned {
+        item: WHITE_SPACE@9 " ",
+        span: [ span: 9..10 ],
+    },
+    Spanned {
+        item: WORD@10 "test",
+        span: [ span: 10..14 ],
+    },
+    Spanned {
+        item: EOF@14 "\0",
+        span: [ span: 14..15 ],
+    },
+]

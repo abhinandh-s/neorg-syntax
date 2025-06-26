@@ -1,12 +1,13 @@
 ---
 source: src/parser.rs
-expression: str
+expression: output
 ---
-Verbatim
+TextChunk
   Word: "this"
   WhiteSpace: " "
   Word: "is"
   WhiteSpace: " "
-  Word: "a"
+  Word: "text"
   WhiteSpace: " "
-  Word: "test"
+  Word: "chunk"
+  Error: " " (unexpected WhiteSpace)

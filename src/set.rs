@@ -49,5 +49,38 @@ macro_rules! syntax_set {
     }}
 }
 
-/// Syntax kinds that can start a statement.
-pub const NON_VERBATIM: SyntaxSet = syntax_set!(Word, WhiteSpace);
+/// Syntax kinds that can start a `|!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~|`.
+pub const PUNCTUATION: SyntaxSet = syntax_set!(
+    Exclamation,
+    DoubleQoute,
+    Pound,
+    Dollar,
+    Percent,
+    Ampersand,
+    SingleQoute,
+    LParen,
+    RParen,
+    Asterisk,
+    Plus,
+    Comma,
+    Hyphen,
+    Dot, // do something. every line will end in dot.
+    Slash,
+    Colon,
+    Semicolon,
+    LessThan,
+    Equal,
+    GreaterThan,
+    QuestionMark,
+    At,
+    LSquare,
+    ForwardSlash,
+    RSquare,
+    Caret,
+    Underscore,
+    Backtick,
+    LCurly,
+    Pipe,
+    RCurly,
+    Tilda
+);

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::node::SyntaxNode;
-use crate::{kind, syntax_set, token, Lexer, SyntaxKind, SyntaxSet, Token};
+use crate::*;
 
 /// A marker representing a node's position in the parser. Mainly used for
 /// wrapping, but can also index into the parser to access the node, like
@@ -53,11 +53,12 @@ impl Parser {
     }
 
     #[track_caller]
-    fn assert(&self, kind: SyntaxKind) {
+    fn assert(&mut self, kind: SyntaxKind) {
         assert_eq!(self.current(), kind);
+        self.eat();
     }
 
-    pub fn current(&self) -> SyntaxKind {
+    fn current(&self) -> SyntaxKind {
         self.tokens[self.cursor].kind()
     }
 
@@ -65,6 +66,45 @@ impl Parser {
         let node = SyntaxNode::leaf(self.tokens[self.cursor].clone());
         self.nodes.push(node);
         self.cursor += 1;
+    }
+
+    /// Eat the token if at `kind`. Returns `true` if eaten.
+    ///
+    /// Note: In Math and Code, this will ignore trivia in front of the
+    /// `kind`, To forbid skipping trivia, consider using `eat_if_direct`.
+    fn eat_if(&mut self, kind: SyntaxKind) -> bool {
+        let at = self.at(kind);
+        if at {
+            self.eat();
+        }
+        at
+    }
+
+    /// Consume the given `kind` or produce an error.
+    fn expect(&mut self, kind: SyntaxKind) -> bool {
+        let at = self.at(kind);
+        if at {
+            self.eat();
+        } else {
+        // 
+        }
+        at
+    }
+
+    /// Consume the given closing delimiter or produce an error for the matching
+    /// opening delimiter at `open`.
+    #[track_caller]
+    fn expect_closing_delimiter(&mut self, open: Marker, kind: SyntaxKind) {
+        if !self.eat_if(kind) {
+            self.nodes[open.0].convert_to_error("unclosed delimiter");
+        }
+    }
+
+    /// Produce an error that the given `thing` was expected at the position
+    /// of the marker `m`.
+    fn expected_at(&mut self, m: Marker, thing: &str) {
+        let error = SyntaxNode::error(SyntaxError::new(format!("expected {thing}")), "");
+        self.nodes.insert(m.0, error);
     }
 
     fn at(&self, kind: SyntaxKind) -> bool {
@@ -89,25 +129,109 @@ impl Parser {
     }
 }
 
+/// # cases
+///
+/// all these cases are covered.
+///
+/// ```ignore
+/// /this is italics/  
+/// / this is not italics/
+/// /this is not italics /
+/// / this is not italics /
+/// ```
 #[tracing::instrument(skip_all)]
-pub fn parse_verbatim(p: &mut Parser) {
+pub fn parse_italics(p: &mut Parser) {
+    let m = p.start();
+    p.assert(K!('/')); // assert & consume '/'
+    p.eat();
+    let _tok = p.current();
+    // if tok.is_inline_expr() {
+    //     parse_inline(p);
+    // } else {
+    parse_text_chunk(p);
+    // }
+
+    p.expect_closing_delimiter(m, K!('/'));
+    p.wrap(m, SyntaxKind::Emph);
+}
+
+/// # Verbatim Paragraph Segments
+///  
+/// These are structurally equivalent to regular `paragraph segments` with a single exception.
+/// Verbatim paragraph segments are built up from _only_ `words`. This means that attached
+/// modifiers and linkables are simply parsed as raw text within a verbatim paragraph segment.
+#[tracing::instrument(skip_all)]
+fn parse_verbatim(p: &mut Parser) {
+    let m = p.start();
+    p.assert(K!('|'));
+
+    parse_verbatim_chunk(p);
+
+    p.expect_closing_delimiter(m, K!('|'));
+    p.wrap(m, SyntaxKind::Verbatim);
+}
+
+#[tracing::instrument(skip_all)]
+fn parse_verbatim_chunk(p: &mut Parser) {
     let m = p.start();
     let set = syntax_set!(Pipe, Eof);
     while !p.at_set(set) {
         p.eat();
     }
-    p.wrap(m, SyntaxKind::Verbatim);
+    p.wrap(m, SyntaxKind::TextChunk);
 }
 
-#[macro_export]
-macro_rules! set_insta_env {
-    () => {
-        fn set() {
-            let key = "INSTA_UPDATE";
-            unsafe {
-                std::env::set_var(key, "allow");
-            }
+#[tracing::instrument(skip_all)]
+fn parse_text_chunk(p: &mut Parser) {
+    let m = p.start();
+    let set = syntax_set!(Pipe, Eof);
+
+    while !p.at_set(set) && p.at_set(syntax_set!(Word, WhiteSpace)) {
+        p.eat();
+    }
+    if let Some(n) = p.nodes.last_mut() {
+        if n.kind() == SyntaxKind::WhiteSpace {
+            n.unexpected();
         }
+    }
+    p.wrap(m, SyntaxKind::TextChunk);
+}
+/// # Paragraph Segments
+///
+/// `Words` are first combined into *paragraph segments*. A paragraph segment
+/// may then contain any inline element of type:
+///
+/// - attached modifiers
+/// - linkables
+///
+/// Usually, a [`line ending`] terminates the paragraph segment.
+/// This means that a paragraph segment is simply a line of text:
+///
+/// # example
+///
+/// I am a paragraph segment.
+/// I am another paragraph segment.
+/// Together we form a paragraph.
+///
+#[tracing::instrument(skip_all)]
+fn parse_para_segment(p: &mut Parser) {
+    let m = p.start();
+
+    while !p.at_set(syntax_set!(LineEnding, Eof)) {
+        if p.at_set(PUNCTUATION) {
+            parse_inline(p);
+        } else {
+            parse_text_chunk(p);
+        }
+    }
+
+    p.wrap(m, SyntaxKind::ParaSegment);
+}
+
+fn parse_inline(p: &mut Parser) {
+    match p.current() {
+        SyntaxKind::Pipe => parse_verbatim(p),
+        _ => panic!("unimplemented inline!"),
     }
 }
 
@@ -116,24 +240,54 @@ macro_rules! assert_tree {
     ($test_name:ident, $parse_fn:ident, $input:literal) => {
         #[test]
         fn $test_name() {
+            let snapshot_path = {
+                let root = env!("CARGO_MANIFEST_DIR");
+                std::path::Path::new(root)
+                    .join("tests")
+                    .join("snapshots")
+            };
+
             let mut p = $crate::Parser::new($input);
-            $crate::$parse_fn(&mut p);
+            $crate::parser::$parse_fn(&mut p);
             assert_eq!(p.nodes().len(), 1);
-            let vec = p.nodes();
-            let str = vec[0].pretty_string();
-        insta::with_settings!({ remove_input_file => , snapshot_path => "tests/snapshots"}, {
-        insta::assert_snapshot!(stringify!($test_name), str);
-});    
+
+            let output = p.nodes()[0].display();
+
+            // puts it in tests/snapshots/
+            // and do not prepend path before snaps name
+            insta::with_settings!({ snapshot_path => snapshot_path, prepend_module_to_snapshot => false }, {
+                insta::assert_snapshot!(output);
+            });
         }
     };
 }
 
-
 #[cfg(test)]
 mod test {
-    
-    // set_insta_env!();
-    
-    assert_tree!(parse_verbatim001, parse_verbatim, "this is a test");
-    assert_tree!(parse_verbatim002, parse_verbatim, " this is a test ");
+    assert_tree!(parse_verbatim_05, parse_verbatim, "|this is a test");
+    assert_tree!(parse_verbatim_01, parse_verbatim, "|this is a test|");
+    assert_tree!(parse_verbatim_02, parse_verbatim, "| this is a test |");
+    assert_tree!(
+        parse_verbatim_03,
+        parse_verbatim,
+        r###"|~ this is a test !"#$%&'()*+,-./:;<=>?@[]^_`{}~\thre|"###
+    );
+    assert_tree!(parse_verbatim_04, parse_verbatim, r###"|~ `{}~\thre|"###);
+    assert_tree!(parse_text_chunk_01, parse_text_chunk, "this is text chunk");
+    assert_tree!(
+        parse_text_chunk_01_err,
+        parse_text_chunk,
+        "this is text chunk / not this"
+    );
+    assert_tree!(
+        parse_para_segment_01,
+        parse_para_segment,
+        "this is |a verbatim text chunk|"
+    );
+      assert_tree!(
+        parse_para_segment_01_err,
+        parse_para_segment,
+        "this is |a verbatim text chunk"
+    );
+
 }

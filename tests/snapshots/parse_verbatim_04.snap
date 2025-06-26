@@ -1,0 +1,16 @@
+---
+source: src/parser.rs
+expression: output
+---
+Verbatim
+  Pipe: "|"
+  TextChunk
+    Tilda: "~"
+    WhiteSpace: " "
+    Backtick: "`"
+    LCurly: "{"
+    RCurly: "}"
+    Tilda: "~"
+    ForwardSlash: "\\"
+    Word: "thre"
+  Pipe: "|"

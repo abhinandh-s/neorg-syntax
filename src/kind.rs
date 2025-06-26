@@ -6,51 +6,51 @@ use crate::kind_to_char;
 #[derive(Debug, Display, PartialEq, Eq, Clone, Copy, Hash)]
 #[repr(u8)]
 pub enum SyntaxKind {
-    LineEnding,      // `\n`, `\r`, `\u{000C}`
-    EscapedChar,     // neorg specific chars can be escaped 
-    Comment,         // %this is inline comment%, there is also an another way 
-    Spoiler,         // !this is a spoiler!
-    Pound,           // `#`
-    At,              // `@`
-    Slash,           // `/`
-    ForwardSlash,    // `\`
-    QuestionMark,    // `?`
-    Asterisk,        // `*`
-    Plus,            // `+`
-    Caret,           // `^`
-    Subscript,       // `^subscript^`
-    Dollar,          // `$`
-    Percent,         // `%`
-    Exclamation,     // `!`
-    Comma,           // `,`
-    Ampersand,       // `&`
-    DoubleQoute,     // '"'
-    SingleQoute,     // `'`
-    Tilda,           // `~`
-    Superscript,     // `,superscript,`
-    Pipe,            // `|`
-    Underscore,      // `_`
-    Backtick,        // `\``
-    Hyphen,          // `-`
-    StrikeThrough,   // `-this is strike through-`
-    Tab,             // `\t`
-    Word,            // a word
-    WhiteSpace,      // ` `
-    KwDocument,      // `@document`
-    KwMeta,          // `@document.meta`
-    KwEnd,           // `@end`
-    KwCode,          // `@code`
-    LSquare,         // `[`
-    RSquare,         // `]`
-    LParen,          // `(`
-    RParen,          // `)`
-    LCurly,          // `{`
-    RCurly,          // `}`
-    GreaterThan,     // `>`
-    LessThan,        // `<`
-    Error,           // `=`
-    Italics,         // `/this is Italics/`
-    Heading,         // `** this is heading`
+    LineEnding,    // `\n`, `\r`, `\u{000C}`
+    EscapedChar,   // neorg specific chars can be escaped
+    Comment,       // %this is inline comment%, there is also an another way
+    Spoiler,       // !this is a spoiler!
+    Pound,         // `#`
+    At,            // `@`
+    Slash,         // `/`
+    ForwardSlash,  // `\`
+    QuestionMark,  // `?`
+    Asterisk,      // `*`
+    Plus,          // `+`
+    Caret,         // `^`
+    Subscript,     // `^subscript^`
+    Dollar,        // `$`
+    Percent,       // `%`
+    Exclamation,   // `!`
+    Comma,         // `,`
+    Ampersand,     // `&`
+    DoubleQoute,   // '"'
+    SingleQoute,   // `'`
+    Tilda,         // `~`
+    Superscript,   // `,superscript,`
+    Pipe,          // `|`
+    Underscore,    // `_`
+    Backtick,      // `\``
+    Hyphen,        // `-`
+    StrikeThrough, // `-this is strike through-`
+    Tab,           // `\t`
+    Word,          // a word
+    WhiteSpace,    // ` `
+    KwDocument,    // `@document`
+    KwMeta,        // `@document.meta`
+    KwEnd,         // `@end`
+    KwCode,        // `@code`
+    LSquare,       // `[`
+    RSquare,       // `]`
+    LParen,        // `(`
+    RParen,        // `)`
+    LCurly,        // `{`
+    RCurly,        // `}`
+    GreaterThan,   // `>`
+    LessThan,      // `<`
+    Error,         // `=`
+    Italics,       // `/this is Italics/`
+    Heading,       // `** this is heading`
     Bold,
     HeadingMarker,
     Eof,
@@ -72,15 +72,19 @@ pub enum SyntaxKind {
 }
 
 impl SyntaxKind {
-     /// Whether this is an error.
+    /// Whether this is an error.
     pub fn is_error(self) -> bool {
         self == Self::Error
     }
 
-    pub const fn text(&self) -> char {
-        kind_to_char(*self)
+    #[track_caller]
+    pub fn text(&self) -> String {
+        match self {
+            SyntaxKind::WhiteSpace => "WhiteSpace".to_string(),
+            any => kind_to_char(*any).to_string(),
+        }
     }
-    
+
     pub const fn is_inline_expr(&self) -> bool {
         matches!(
             self,

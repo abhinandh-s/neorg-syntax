@@ -1,0 +1,15 @@
+---
+source: src/parser.rs
+expression: output
+---
+Verbatim
+  Pipe: "|"
+  TextChunk
+    Word: "this"
+    WhiteSpace: " "
+    Word: "is"
+    WhiteSpace: " "
+    Word: "a"
+    WhiteSpace: " "
+    Word: "test"
+  Pipe: "|"

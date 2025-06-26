@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
 use std::sync::Arc;
+use std::usize;
 
-use crate::{Span, SyntaxKind, Token};
+use crate::{Span, SyntaxKind, Token, token};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxNode(Repr);
@@ -123,12 +124,37 @@ impl SyntaxNode {
                 .collect()
         }
     }
-
     /// Add a user-presentable hint if this is an error node.
     pub fn hint(&mut self, hint: impl Into<String>) {
         if let Repr::Error(node) = &mut self.0 {
             Arc::make_mut(node).hint(hint);
         }
+    }
+
+    /// Convert the child to an error, if it isn't already one.
+    pub(super) fn convert_to_error(&mut self, message: impl Into<String>) {
+        if !self.kind().is_error() {
+            let text = std::mem::take(self).into_text();
+            *self = SyntaxNode::error(SyntaxError::new(message), text);
+        }
+    }
+    /// Convert the child to an error stating that the given thing was
+    /// expected, but the current kind was found.
+    pub(super) fn expected(&mut self, expected: &str) {
+        let kind = self.kind();
+        self.convert_to_error(format!("expected {expected}, found {}", kind.text()));
+    }
+
+    /// Convert the child to an error stating it was unexpected.
+    pub(super) fn unexpected(&mut self) {
+        self.convert_to_error(format!("unexpected {}", self.kind().text()));
+    }
+}
+
+// for 'convert_to_error'
+impl Default for SyntaxNode {
+    fn default() -> Self {
+        Self::leaf(token!(SyntaxKind::Eof, "", 0))
     }
 }
 
@@ -290,7 +316,7 @@ impl SyntaxError {
 }
 
 impl SyntaxNode {
-    pub fn pretty_string(&self) -> String {
+    pub fn display(&self) -> String {
         fn fmt(node: &SyntaxNode, indent: usize, output: &mut String) {
             let padding = "  ".repeat(indent);
             match &node.0 {
@@ -317,3 +343,4 @@ impl SyntaxNode {
         out
     }
 }
+

@@ -1,0 +1,21 @@
+---
+source: src/parser.rs
+expression: output
+---
+ParaSegment
+  TextChunk
+    Word: "this"
+    WhiteSpace: " "
+    Word: "is"
+    Error: " " (unexpected WhiteSpace)
+  Verbatim
+    Pipe: "|"
+    TextChunk
+      Word: "a"
+      WhiteSpace: " "
+      Word: "verbatim"
+      WhiteSpace: " "
+      Word: "text"
+      WhiteSpace: " "
+      Word: "chunk"
+    Pipe: "|"

@@ -1,0 +1,14 @@
+---
+source: src/parser.rs
+expression: output
+---
+Verbatim
+  Error: "|" (unclosed delimiter)
+  TextChunk
+    Word: "this"
+    WhiteSpace: " "
+    Word: "is"
+    WhiteSpace: " "
+    Word: "a"
+    WhiteSpace: " "
+    Word: "test"
