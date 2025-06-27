@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![deny(clippy::print_stdout, clippy::print_stderr)]
 
 use crate::node::SyntaxNode;
 use crate::*;
@@ -86,7 +87,12 @@ impl Parser {
         if at {
             self.eat();
         } else {
-        // 
+            // FIX: eat?
+            //  self.nodes().push(SyntaxNode::error(
+            //      SyntaxError::new(format!("expected {}, found {}", kind, self.current().text())),
+            //      self.current().text(),
+            //  ));
+            //  self.eat();
         }
         at
     }
@@ -100,6 +106,18 @@ impl Parser {
         }
     }
 
+    /// Eat the current node and return a reference for in-place mutation.
+    #[track_caller]
+    fn eat_and_get(&mut self) -> &mut SyntaxNode {
+        let offset = self.nodes.len();
+        self.eat();
+        &mut self.nodes[offset]
+    }
+    /// Consume the next token (if any) and produce an error stating that it was
+    /// unexpected.
+    fn unexpected(&mut self) {
+        self.eat_and_get().unexpected();
+    }
     /// Produce an error that the given `thing` was expected at the position
     /// of the marker `m`.
     fn expected_at(&mut self, m: Marker, thing: &str) {
@@ -117,7 +135,7 @@ impl Parser {
 
     fn wrap(&mut self, m: Marker, kind: SyntaxKind) {
         let drained = self.nodes.drain(m.0..).collect();
-        println!("{:?}", drained);
+        dbg!("called wrap");
         tracing::debug!(?drained, "wrap node");
         let node = SyntaxNode::inner(kind, drained);
         tracing::debug!(?m, ?kind, "wrap node");
@@ -155,6 +173,61 @@ pub fn parse_italics(p: &mut Parser) {
     p.wrap(m, SyntaxKind::Emph);
 }
 
+#[tracing::instrument(skip_all)]
+fn parse_emph(p: &mut Parser) {
+    let m = p.start();
+    p.assert(T!('*'));
+    if p.current() == SyntaxKind::WhiteSpace {
+        p.unexpected();
+    }
+    parse_text_chunk(p);
+
+    p.expect_closing_delimiter(m, T!('*'));
+    p.wrap(m, SyntaxKind::Emph);
+}
+
+assert_tree!(
+    // normal
+    parse_emph_01,
+    parse_emph,
+    "*a verbatim text chunk* sdffd"
+);
+
+assert_tree!(
+    // normal
+    parse_emph_02,
+    parse_emph,
+    "* a verbatim text chunk* sdffd"
+);
+
+assert_tree!(
+    // normal
+    parse_emph_03,
+    parse_emph,
+    "*a verbatim text chunk * sdffd"
+);
+
+assert_tree!(
+    // error: WhiteSpace at both end
+    parse_emph_04,
+    parse_emph,
+    "* a verbatim text chunk * sdffd"
+);
+/// # Deals with:
+///
+/// - normal TextChunk
+/// - inline TextChunk
+/// - inline elements
+#[tracing::instrument(skip_all)]
+pub fn parse_paragraph(p: &mut Parser) {
+    let m = p.start();
+    while !p.at(SyntaxKind::Eof) {
+        parse_para_segment(p);
+    }
+
+    p.wrap(m, SyntaxKind::Paragraph);
+}
+
 /// # Verbatim Paragraph Segments
 ///  
 /// These are structurally equivalent to regular `paragraph segments` with a single exception.
@@ -176,6 +249,16 @@ fn parse_verbatim_chunk(p: &mut Parser) {
     let m = p.start();
     let set = syntax_set!(Pipe, Eof);
     while !p.at_set(set) {
+        p.eat();
+    }
+    p.wrap(m, SyntaxKind::TextChunk);
+}
+
+#[tracing::instrument(skip_all)]
+fn parse_nm_text_chunk(p: &mut Parser) {
+    let m = p.start();
+
+    while p.at_set(syntax_set!(Word, WhiteSpace, Dot)) {
         p.eat();
     }
     p.wrap(m, SyntaxKind::TextChunk);
@@ -221,16 +304,17 @@ fn parse_para_segment(p: &mut Parser) {
         if p.at_set(PUNCTUATION) {
             parse_inline(p);
         } else {
-            parse_text_chunk(p);
+            parse_nm_text_chunk(p);
         }
     }
-
+    p.expect(SyntaxKind::LineEnding);
     p.wrap(m, SyntaxKind::ParaSegment);
 }
 
 fn parse_inline(p: &mut Parser) {
     match p.current() {
         SyntaxKind::Pipe => parse_verbatim(p),
+        SyntaxKind::Asterisk => parse_emph(p),
         _ => panic!("unimplemented inline!"),
     }
 }
@@ -284,10 +368,55 @@ mod test {
         parse_para_segment,
         "this is |a verbatim text chunk|"
     );
-      assert_tree!(
+    assert_tree!(
         parse_para_segment_01_err,
         parse_para_segment,
         "this is |a verbatim text chunk"
+    );
+    assert_tree!(
+        parse_para_segment_02_err,
+        parse_para_segment,
+        "this is |a verbatim text chunk|\nthis is next"
+    );
+    assert_tree!(
+        parse_para_segment_03_err,
+        parse_para_segment,
+        "this isrbatim text chunk\nthis is next"
+    );
+    assert_tree!(
+        parse_paragraph_01,
+        parse_paragraph,
+        "this isrbatim text chunk\nthis is next"
+    );
+    assert_tree!(
+        parse_paragraph_02,
+        parse_paragraph,
+        r#"I am a paragraph segment
+I am another paragraph segment
+ Together we form a paragraph"#
+    );
+    assert_tree!(
+        parse_paragraph_03,
+        parse_paragraph,
+        r#"I am a paragraph segment.
+I am another paragraph segment.
+    Together we form a paragraph."#
+    );
+    assert_tree!(
+        parse_paragraph_with_verbatim_01,
+        parse_paragraph,
+        r#"I am a paragraph segment.
+I am another paragraph segment.
+this |is verbatim| content
+    Together we form a paragraph."#
+    );
+      assert_tree!(
+        parse_paragraph_with_verbatim_emph_01,
+        parse_paragraph,
+        r#"I am a paragraph segment.
+I am another paragraph segment.
+this |is verbatim| content *this is bold*
+    Together we form a paragraph."#
     );
 
 }

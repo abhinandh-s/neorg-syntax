@@ -81,6 +81,8 @@ impl SyntaxKind {
     pub fn text(&self) -> String {
         match self {
             SyntaxKind::WhiteSpace => "WhiteSpace".to_string(),
+            SyntaxKind::Word => "text".to_string(),
+            SyntaxKind::LineEnding => "LineEnding".to_string(),
             any => kind_to_char(*any).to_string(),
         }
     }

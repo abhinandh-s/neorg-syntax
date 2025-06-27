@@ -50,6 +50,7 @@ macro_rules! syntax_set {
 }
 
 /// Syntax kinds that can start a `|!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~|`.
+/// Dot is excluded from PUNCTUATION's set
 pub const PUNCTUATION: SyntaxSet = syntax_set!(
     Exclamation,
     DoubleQoute,
@@ -64,7 +65,6 @@ pub const PUNCTUATION: SyntaxSet = syntax_set!(
     Plus,
     Comma,
     Hyphen,
-    Dot, // do something. every line will end in dot.
     Slash,
     Colon,
     Semicolon,

@@ -21,7 +21,12 @@ fn main() {
     let italics04 = "/ this is not italics /";
     let heading = "!%/*this is a nested inline text*/%!";
     
-    let mut p = Parser::new("this is a ");
+    let mut p = Parser::new(r###"
+I am a paragraph segment.
+I am another paragraph segment.
+Together we form a paragraph."###);
+
+    parse_paragraph(&mut p);
 
     // print_cst(source);
 

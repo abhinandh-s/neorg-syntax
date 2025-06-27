@@ -1,0 +1,41 @@
+---
+source: src/parser.rs
+expression: output
+---
+Paragraph
+  ParaSegment
+    TextChunk
+      Word: "I"
+      WhiteSpace: " "
+      Word: "am"
+      WhiteSpace: " "
+      Word: "a"
+      WhiteSpace: " "
+      Word: "paragraph"
+      WhiteSpace: " "
+      Word: "segment"
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      Word: "I"
+      WhiteSpace: " "
+      Word: "am"
+      WhiteSpace: " "
+      Word: "another"
+      WhiteSpace: " "
+      Word: "paragraph"
+      WhiteSpace: " "
+      Word: "segment"
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: " "
+      Word: "Together"
+      WhiteSpace: " "
+      Word: "we"
+      WhiteSpace: " "
+      Word: "form"
+      WhiteSpace: " "
+      Word: "a"
+      WhiteSpace: " "
+      Word: "paragraph"

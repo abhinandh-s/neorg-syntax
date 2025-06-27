@@ -1,0 +1,16 @@
+---
+source: src/parser.rs
+expression: output
+---
+Emph
+  Asterisk: "*"
+  TextChunk
+    Word: "a"
+    WhiteSpace: " "
+    Word: "verbatim"
+    WhiteSpace: " "
+    Word: "text"
+    WhiteSpace: " "
+    Word: "chunk"
+    Error: " " (unexpected WhiteSpace)
+  Asterisk: "*"

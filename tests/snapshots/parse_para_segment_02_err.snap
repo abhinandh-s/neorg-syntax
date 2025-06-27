@@ -19,3 +19,4 @@ ParaSegment
       WhiteSpace: " "
       Word: "chunk"
     Pipe: "|"
+  LineEnding: "\n"

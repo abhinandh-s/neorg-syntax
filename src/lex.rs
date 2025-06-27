@@ -103,25 +103,27 @@ macro_rules! token {
     };
 }
 
-/// A lexical analysis function type used in the tokenizer/lexer stage.
-///
-/// `LexFn` represents the type of functions that accept a mutable reference to a
-/// `Peekable<Chars>` iterator and return an optional `Token`.
-///
-/// # Returns
-///
-/// - `Some(Token)`: If the function successfully lexes a valid token from the input.
-///
-/// # Example
-///
-/// ```
-/// fn lex_something(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
-///         None
-/// }
-/// ```
-///
-/// This become handy when we put it in `HashMap`.
-/// Any function with this Signature can be tied together.
+#[doc = r###"A lexical analysis function type used in the tokenizer/lexer stage.
+
+[`LexFn`] represents the type of functions that accept a mutable reference to a
+`Peekable<Chars>` iterator and return an optional `Token`.
+
+# Returns
+
+- `Some(Token)`: If the function successfully lexes a valid token from the input.
+
+# Example
+
+```
+use  std::iter::Peekable;
+
+fn lex_something<Token>(chars: &mut Peekable<std::str::Chars<'_>>) -> Option<Token> {
+        None
+}
+```
+
+This become handy when we put it in `HashMap`.
+Any function with this Signature can be tied together."###]
 type LexFn = fn(&mut Peekable<Chars<'_>>) -> Option<Token>;
 
 /// This macro generates a function with the given name that checks if the current character
@@ -383,6 +385,9 @@ macro_rules! define_punct_lexers {
 macro_rules! T {
     ($ch:tt) => {
         $crate::char_to_kind($ch)
+    };
+    ($expr:expr) => {
+        $crate::SyntaxKind::$expr
     };
 }
 /// The `Lexer`
@@ -767,11 +772,10 @@ fn auto() {
 
     insta::with_settings!({ snapshot_path => snapshot_path, prepend_module_to_snapshot => false }, {
         insta::assert_debug_snapshot!(spanned);
-          let input = "🙂⚠️©®€🤯⌘";
+        let input = "🙂⚠️©®€🤯⌘";
         let mut binding = Lexer::new(input);
         let tokens = binding.lex();
         insta::assert_debug_snapshot!(tokens);
-
     });
 }
 

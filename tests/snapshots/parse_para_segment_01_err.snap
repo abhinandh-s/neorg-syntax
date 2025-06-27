@@ -7,7 +7,7 @@ ParaSegment
     Word: "this"
     WhiteSpace: " "
     Word: "is"
-    Error: " " (unexpected WhiteSpace)
+    WhiteSpace: " "
   Verbatim
     Error: "|" (unclosed delimiter)
     TextChunk

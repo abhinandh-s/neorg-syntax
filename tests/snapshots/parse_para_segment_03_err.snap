@@ -1,0 +1,14 @@
+---
+source: src/parser.rs
+expression: output
+---
+ParaSegment
+  TextChunk
+    Word: "this"
+    WhiteSpace: " "
+    Word: "isrbatim"
+    WhiteSpace: " "
+    Word: "text"
+    WhiteSpace: " "
+    Word: "chunk"
+  LineEnding: "\n"
