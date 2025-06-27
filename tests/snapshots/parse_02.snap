@@ -1,0 +1,197 @@
+---
+source: src/parser.rs
+expression: output
+---
+Paragraph
+  ParaSegment
+    TextChunk
+      WhiteSpace: " "
+      Word: "I"
+      WhiteSpace: " "
+      Word: "am"
+      WhiteSpace: " "
+      Word: "a"
+      WhiteSpace: " "
+      Word: "paragraph"
+      WhiteSpace: " "
+      Word: "segment"
+      Dot: "."
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      Word: "I"
+      WhiteSpace: " "
+      Word: "am"
+      WhiteSpace: " "
+      Word: "another"
+      WhiteSpace: " "
+      Word: "paragraph"
+      WhiteSpace: " "
+      Word: "segment"
+      Dot: "."
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: " "
+      Word: "are"
+      WhiteSpace: " "
+    UnderLine
+      Underscore: "_"
+      TextChunk
+        Word: "attached"
+      Underscore: "_"
+    TextChunk
+      WhiteSpace: " "
+      Word: "to"
+      WhiteSpace: " "
+      Word: "one"
+      WhiteSpace: " "
+      Word: "another"
+      Dot: "."
+    LineEnding: "\n"
+  ParaBreak
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "  "
+    Emph
+      Asterisk: "*"
+      TextChunk
+        Word: "bold"
+      Asterisk: "*"
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "  "
+    Italics
+      Slash: "/"
+      TextChunk
+        Word: "italic"
+      Slash: "/"
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "  "
+    UnderLine
+      Underscore: "_"
+      TextChunk
+        Word: "underline"
+      Underscore: "_"
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "  "
+    Verbatim
+      Pipe: "|"
+      TextChunk
+        Hyphen: "-"
+        Word: "strike"
+        Hyphen: "-"
+        Word: "through"
+        Hyphen: "-"
+      Pipe: "|"
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "  "
+    Spoiler
+      Exclamation: "!"
+      TextChunk
+        Word: "spoiler"
+      Exclamation: "!"
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "  "
+    Superscript
+      Caret: "^"
+      TextChunk
+        Word: "superscript"
+      Caret: "^"
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "  "
+    Subscript
+      Comma: ","
+      TextChunk
+        Word: "subscript"
+      Comma: ","
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "  "
+    InlineCode
+      Backtick: "`"
+      TextChunk
+        Word: "inline"
+        WhiteSpace: " "
+        Word: "code"
+      Backtick: "`"
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "  "
+    InlineCode
+      Error: "`" (unclosed delimiter)
+      TextChunk
+    NullModifier
+      Percent: "%"
+      TextChunk
+        Word: "null"
+        WhiteSpace: " "
+        Word: "modifier"
+      Percent: "%"
+    InlineCode
+      Error: "`" (unclosed delimiter)
+      TextChunk
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "  "
+    Variable
+      Ampersand: "&"
+      TextChunk
+        Word: "variable"
+      Ampersand: "&"
+    TextChunk
+      WhiteSpace: " "
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      Word: "this"
+      WhiteSpace: " "
+    Verbatim
+      Pipe: "|"
+      TextChunk
+        Word: "is"
+        WhiteSpace: " "
+        Word: "verbatim"
+      Pipe: "|"
+    TextChunk
+      WhiteSpace: " "
+      Word: "content"
+      WhiteSpace: " "
+    Emph
+      Asterisk: "*"
+      TextChunk
+        Word: "this"
+        WhiteSpace: " "
+        Word: "is"
+        WhiteSpace: " "
+        Word: "bold"
+      Asterisk: "*"
+    LineEnding: "\n"
+  ParaSegment
+    TextChunk
+      WhiteSpace: "    "
+      Word: "Together"
+      WhiteSpace: " "
+      Word: "we"
+      WhiteSpace: " "
+      Word: "form"
+      WhiteSpace: " "
+      Word: "a"
+      WhiteSpace: " "
+      Word: "paragraph"
+      Dot: "."

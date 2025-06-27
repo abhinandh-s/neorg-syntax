@@ -164,21 +164,115 @@ impl Parser {
 #[tracing::instrument(skip_all)]
 pub fn parse_italics(p: &mut Parser) {
     let m = p.start();
-    p.assert(T!('/')); // assert & consume '/'
-    p.eat();
-    let _tok = p.current();
-    // if tok.is_inline_expr() {
-    //     parse_inline(p);
-    // } else {
+    p.assert(T!('/'));
+    if p.current() == SyntaxKind::WhiteSpace {
+        p.unexpected();
+    }
     parse_text_chunk(p);
-    // }
 
     p.expect_closing_delimiter(m, T!('/'));
-    p.wrap(m, SyntaxKind::Emph);
+    p.wrap(m, SyntaxKind::Italics);
+}
+#[tracing::instrument(skip_all)]
+fn parse_variable(p: &mut Parser) {
+    let m = p.start();
+    p.assert(T!('&'));
+    if p.current() == SyntaxKind::WhiteSpace {
+        p.unexpected();
+    }
+    parse_text_chunk(p);
+
+    p.expect_closing_delimiter(m, T!('&'));
+    p.wrap(m, SyntaxKind::Variable);
+}
+#[tracing::instrument(skip_all)]
+fn parse_inline_maths(p: &mut Parser) {
+    let m = p.start();
+    p.assert(T!('$'));
+    if p.current() == SyntaxKind::WhiteSpace {
+        p.unexpected();
+    }
+    parse_text_chunk(p);
+
+    p.expect_closing_delimiter(m, T!('$'));
+    p.wrap(m, SyntaxKind::InlineMath);
+}
+#[tracing::instrument(skip_all)]
+fn parse_null_modifier(p: &mut Parser) {
+    let m = p.start();
+    p.assert(T!('%'));
+    if p.current() == SyntaxKind::WhiteSpace {
+        p.unexpected();
+    }
+    parse_text_chunk(p);
+
+    p.expect_closing_delimiter(m, T!('%'));
+    p.wrap(m, SyntaxKind::NullModifier);
+}
+#[tracing::instrument(skip_all)]
+fn parse_inline_code(p: &mut Parser) {
+    let m = p.start();
+    p.assert(T!('`'));
+    if p.current() == SyntaxKind::WhiteSpace {
+        p.unexpected();
+    }
+    parse_text_chunk(p);
+
+    p.expect_closing_delimiter(m, T!('`'));
+    p.wrap(m, SyntaxKind::InlineCode);
+}
+#[tracing::instrument(skip_all)]
+fn parse_subscript(p: &mut Parser) {
+    let m = p.start();
+    p.assert(T!(','));
+    if p.current() == SyntaxKind::WhiteSpace {
+        p.unexpected();
+    }
+    parse_text_chunk(p);
+
+    p.expect_closing_delimiter(m, T!(','));
+    p.wrap(m, SyntaxKind::Subscript);
+}
+#[tracing::instrument(skip_all)]
+fn parse_superscript(p: &mut Parser) {
+    let m = p.start();
+    p.assert(T!('^'));
+    if p.current() == SyntaxKind::WhiteSpace {
+        p.unexpected();
+    }
+    parse_text_chunk(p);
+
+    p.expect_closing_delimiter(m, T!('^'));
+    p.wrap(m, SyntaxKind::Superscript);
+}
+#[tracing::instrument(skip_all)]
+fn parse_spoiler(p: &mut Parser) {
+    let m = p.start();
+    p.assert(T!('!'));
+    if p.current() == SyntaxKind::WhiteSpace {
+        p.unexpected();
+    }
+    parse_text_chunk(p);
+
+    p.expect_closing_delimiter(m, T!('!'));
+    p.wrap(m, SyntaxKind::Spoiler);
 }
 
 #[tracing::instrument(skip_all)]
-fn parse_emph(p: &mut Parser) {
+fn parse_underline(p: &mut Parser) {
+    let m = p.start();
+    p.assert(T!('_'));
+    if p.current() == SyntaxKind::WhiteSpace {
+        p.unexpected();
+    }
+    parse_text_chunk(p);
+
+    p.expect_closing_delimiter(m, T!('_'));
+    p.wrap(m, SyntaxKind::UnderLine);
+}
+
+#[tracing::instrument(skip_all)]
+fn parse_bold(p: &mut Parser) {
     let m = p.start();
     p.assert(T!('*'));
     if p.current() == SyntaxKind::WhiteSpace {
@@ -193,30 +287,31 @@ fn parse_emph(p: &mut Parser) {
 assert_tree!(
     // normal
     parse_emph_01,
-    parse_emph,
+    parse_bold,
     "*a verbatim text chunk* sdffd"
 );
 
 assert_tree!(
     // normal
     parse_emph_02,
-    parse_emph,
+    parse_bold,
     "* a verbatim text chunk* sdffd"
 );
 
 assert_tree!(
     // normal
     parse_emph_03,
-    parse_emph,
+    parse_bold,
     "*a verbatim text chunk * sdffd"
 );
 
 assert_tree!(
     // error: WhiteSpace at both end
     parse_emph_04,
-    parse_emph,
+    parse_bold,
     "* a verbatim text chunk * sdffd"
 );
+
 /// # Deals with:
 ///
 /// - normal TextChunk
@@ -328,7 +423,7 @@ fn parse_para_segment(p: &mut Parser) {
 
     while !p.at_set(syntax_set!(LineEnding, Eof)) {
         if p.at_set(PUNCTUATION) {
-            parse_inline(p);
+            parse_attached_modifiers(p);
         } else {
             parse_nm_text_chunk(p);
         }
@@ -337,10 +432,35 @@ fn parse_para_segment(p: &mut Parser) {
     p.wrap(m, SyntaxKind::ParaSegment);
 }
 
-fn parse_inline(p: &mut Parser) {
+/// Their name should be rather self-explanatory - both the opening and closing modifier
+/// are _attached_ to one another.
+///
+/// The following attached modifiers exist and have respective meaning:
+/// - *bold*
+/// - /italic/
+/// - _underline_
+/// - -strike-through-  TODO:
+/// - !spoiler!
+/// - ^superscript^ (cannot be nested into `subscript`)
+/// - ,subscript, (cannot be nested into `superscript`)
+/// - `inline code` (disables any nested markup - verbatim)
+/// - `%null modifier%`
+/// - $f(x) = y$ (verbatim)
+/// - &variable& (verbatim)
+fn parse_attached_modifiers(p: &mut Parser) {
+    dbg!(p.current());
     match p.current() {
+        SyntaxKind::Asterisk => parse_bold(p),
+        SyntaxKind::Slash => parse_italics(p),
+        SyntaxKind::Underscore => parse_underline(p),
+        SyntaxKind::Exclamation => parse_spoiler(p),
+        SyntaxKind::Caret => parse_superscript(p),
+        SyntaxKind::Comma => parse_subscript(p),
+        SyntaxKind::Backtick => parse_inline_code(p),
+        SyntaxKind::Percent => parse_null_modifier(p),
+        SyntaxKind::Dollar => parse_inline_maths(p),
+        SyntaxKind::Ampersand => parse_variable(p),
         SyntaxKind::Pipe => parse_verbatim(p),
-        SyntaxKind::Asterisk => parse_emph(p),
         _ => panic!("unimplemented inline!"),
     }
 }
@@ -445,7 +565,7 @@ this |is verbatim| content *this is bold*
     Together we form a paragraph."#
     );
 
-    // ParaBreak 
+    // ParaBreak
     //
     // [case:1/2]
     //
@@ -460,7 +580,7 @@ this |is verbatim| content *this is bold*
     Together we form a paragraph."#
     );
 
-    // ParaBreak 
+    // ParaBreak
     //
     // [case:2/2]
     //
@@ -471,6 +591,26 @@ this |is verbatim| content *this is bold*
         r#" I am a paragraph segment.
 I am another paragraph segment.
       
+this |is verbatim| content *this is bold*
+    Together we form a paragraph."#
+    );
+    assert_tree!(
+        parse_02,
+        parse_paragraph,
+        r#" I am a paragraph segment.
+I am another paragraph segment.
+ are _attached_ to one another.
+
+  *bold*
+  /italic/
+  _underline_
+  |-strike-through-|
+  !spoiler!
+  ^superscript^
+  ,subscript,
+  `inline code`
+  `%null modifier%`
+  &variable& 
 this |is verbatim| content *this is bold*
     Together we form a paragraph."#
     );

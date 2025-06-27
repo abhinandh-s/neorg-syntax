@@ -70,6 +70,11 @@ pub enum SyntaxKind {
     Verbatim,    // raw text
     Maths,       // $ contents inside this $
     __LAST,
+    UnderLine,
+    InlineCode,
+    NullModifier,
+    InlineMath,
+    Variable,
 }
 
 impl SyntaxKind {
