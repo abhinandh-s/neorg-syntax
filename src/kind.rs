@@ -65,6 +65,7 @@ pub enum SyntaxKind {
     Emph,
     Paragraph,   // group of Paragraph Segments
     ParaSegment, // Paragraph Segments
+    ParaBreak,
     TextChunk,   // contains `Word`s and `WhiteSpace` only
     Verbatim,    // raw text
     Maths,       // $ contents inside this $

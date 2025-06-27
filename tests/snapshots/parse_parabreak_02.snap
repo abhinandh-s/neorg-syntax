@@ -1,11 +1,11 @@
 ---
 source: src/parser.rs
-assertion_line: 413
 expression: output
 ---
 Paragraph
   ParaSegment
     TextChunk
+      WhiteSpace: " "
       Word: "I"
       WhiteSpace: " "
       Word: "am"
@@ -29,6 +29,9 @@ Paragraph
       WhiteSpace: " "
       Word: "segment"
       Dot: "."
+    LineEnding: "\n"
+  ParaBreak
+    WhiteSpace: "      "
     LineEnding: "\n"
   ParaSegment
     TextChunk

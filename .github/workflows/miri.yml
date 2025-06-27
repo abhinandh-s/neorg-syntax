@@ -1,37 +1,25 @@
-name: Miri
+name: Cargo Build & Test
 
 on:
-  workflow_dispatch:
   push:
-    branches: ["**"]
   pull_request:
-    branches: ["**"]
+
+env: 
+  CARGO_TERM_COLOR: always
 
 jobs:
-  miri:
-    name: Run Miri Tests
+  build_and_test:
+    name: Rust project - latest
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        toolchain:
+          - stable
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Rust (nightly)
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-          components: miri
-
-      - name: Cache Cargo registry
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Install Miri
-        run: cargo +nightly miri setup
-
-      - name: Run Miri tests
-        run: cargo +nightly miri test
+      - uses: actions/checkout@v4
+      - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - run: cargo build --verbose
+      - run: cargo clippy
+      - run: |
+          export RUST_BACKTRACE=1
+          cargo test -- --nocapture

@@ -63,6 +63,10 @@ impl Parser {
         self.tokens[self.cursor].kind()
     }
 
+    fn next(&self) -> Option<SyntaxKind> {
+        self.tokens.get(self.cursor + 1).map(|f| f.kind())
+    }
+
     fn eat(&mut self) {
         let node = SyntaxNode::leaf(self.tokens[self.cursor].clone());
         self.nodes.push(node);
@@ -218,13 +222,35 @@ assert_tree!(
 /// - normal TextChunk
 /// - inline TextChunk
 /// - inline elements
+///
+///
+/// # Paragraph Break
+///
+/// A paragraph break is defined as an _empty line_. In the simplest case that means two consecutive
+/// `line endings` but since Neorg is a /free-form/ markup language, a line which only contains
+/// whitespace is also considered empty.
 #[tracing::instrument(skip_all)]
 pub fn parse_paragraph(p: &mut Parser) {
     let m = p.start();
     while !p.at(SyntaxKind::Eof) {
-        parse_para_segment(p);
+        // a paragraph segment stops at `LineEnding`.
+        // ie, after a loop if p is at `LineEnding` or `WhiteSpace`
+        if let Some(k) = p.next() {
+            if p.at(SyntaxKind::LineEnding) {
+                let m = p.start();
+                p.eat();
+                p.wrap(m, SyntaxKind::ParaBreak);
+            } else if p.at(SyntaxKind::WhiteSpace) && k == SyntaxKind::LineEnding {
+                let m = p.start();
+                p.eat();
+                p.eat();
+                p.wrap(m, SyntaxKind::ParaBreak);
+            } else {
+                // still p is at WhiteSpace
+                parse_para_segment(p);
+            }
+        }
     }
-
     p.wrap(m, SyntaxKind::Paragraph);
 }
 
@@ -410,7 +436,7 @@ I am another paragraph segment.
 this |is verbatim| content
     Together we form a paragraph."#
     );
-      assert_tree!(
+    assert_tree!(
         parse_paragraph_with_verbatim_emph_01,
         parse_paragraph,
         r#"I am a paragraph segment.
@@ -419,4 +445,33 @@ this |is verbatim| content *this is bold*
     Together we form a paragraph."#
     );
 
+    // ParaBreak 
+    //
+    // [case:1/2]
+    //
+    // `LineEnding` after a `LineEnding`
+    assert_tree!(
+        parse_parabreak_01,
+        parse_paragraph,
+        r#" I am a paragraph segment.
+I am another paragraph segment.
+
+this |is verbatim| content *this is bold*
+    Together we form a paragraph."#
+    );
+
+    // ParaBreak 
+    //
+    // [case:2/2]
+    //
+    // empty line with many `WhiteSpace` followed by `LineEnding`
+    assert_tree!(
+        parse_parabreak_02,
+        parse_paragraph,
+        r#" I am a paragraph segment.
+I am another paragraph segment.
+      
+this |is verbatim| content *this is bold*
+    Together we form a paragraph."#
+    );
 }
