@@ -3,7 +3,7 @@
 use std::{
     fmt::{Debug, Display},
     iter::Peekable,
-    str::CharIndices,
+    str::Chars,
     sync::Arc,
 };
 
@@ -17,7 +17,62 @@ mod char {
     impl Sealed for char {}
 }
 
+/// represents a single token emitted by `Lexer`
+#[derive(Clone, PartialEq, Eq)]
+pub struct TokenData {
+    text: String,
+    kind: SyntaxKind,
+    // utf16 len to `text`
+    len: usize,
+}
+
+/// get methods for TokenData
+impl TokenData {
+    /// Creates a new [`TokenData`].
+    pub fn new(kind: SyntaxKind, text: String, offset: usize) -> Self {
+        Self {
+            kind,
+            text,
+            len: offset,
+        }
+    }
+
+    /// Returns a reference to the text of this [`TokenData`].
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    /// Returns the kind of this [`TokenData`].
+    pub fn kind(&self) -> SyntaxKind {
+        self.kind
+    }
+
+    /// Returns the utf16 len of text of this [`TokenData`].
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    /// Returns the is empty of this [`TokenData`].
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+impl Display for TokenData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}@{}", self.kind, self.len)
+    }
+}
+
+impl Debug for TokenData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {:?}@{}", self.kind(), self.text(), self.len())
+    }
+}
+
 /// wrapper around `Arc<TokenData>`
+///
+/// see [`token!`]
 pub(crate) type Token = Arc<TokenData>;
 
 /// A macro to easily create `TokenData` wrapped in `Arc`
@@ -29,12 +84,17 @@ pub(crate) type Token = Arc<TokenData>;
 /// - `offset`: usize
 ///
 /// Expands to:
-/// ```ignore
-/// Token::New(TokenData {
-///   kind: SyntaxKind::WhiteSpace,
-///   text: text.into(),
-///   offset: offset,
-/// })
+/// ```
+/// use neorg_syntax::*;
+///
+/// assert_eq!(
+///     token!(SyntaxKind::WhiteSpace, " ", 0),
+///     std::sync::Arc::new(TokenData::new(
+///         SyntaxKind::WhiteSpace,
+///         " ".into(),
+///         0,
+///     ))
+/// );
 /// ```
 #[macro_export]
 macro_rules! token {
@@ -46,13 +106,7 @@ macro_rules! token {
 /// A lexical analysis function type used in the tokenizer/lexer stage.
 ///
 /// `LexFn` represents the type of functions that accept a mutable reference to a
-/// `Peekable<CharIndices>` iterator and return an optional `Token`.
-///
-/// # Parameters
-///
-/// - `chars`: A mutable reference to a `Peekable<CharIndices>`. This iterator yields `(usize, char)`
-///   pairs representing the index and the character from the input string. The `Peekable` wrapper
-///   allows lookahead behavior, which is essential for multi-character token recognition.
+/// `Peekable<Chars>` iterator and return an optional `Token`.
 ///
 /// # Returns
 ///
@@ -60,30 +114,15 @@ macro_rules! token {
 ///
 /// # Example
 ///
-/// ```ignore
-/// fn lex_whitespace(chars: &mut Peekable<CharIndices>) -> Option<Token> {
-///     let &(start_idx, ch) = chars.peek()?;
-///     if ch.is_whitespace() {
-///         let mut end = start_idx;
-///         while let Some(&(_, c)) = chars.peek() {
-///             if c.is_whitespace() {
-///                 end += c.len_utf8();
-///                 chars.next();
-///             } else {
-///                 break;
-///             }
-///         }
-///         let text = " ".repeat((end - start_idx) / 1); // simplified
-///         Some(token!(SyntaxKind::Whitespace, text, start_idx))
-///     } else {
+/// ```
+/// fn lex_something(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
 ///         None
-///     }
 /// }
 /// ```
 ///
 /// This become handy when we put it in `HashMap`.
 /// Any function with this Signature can be tied together.
-type LexFn = fn(&mut Peekable<CharIndices<'_>>) -> Option<Token>;
+type LexFn = fn(&mut Peekable<Chars<'_>>) -> Option<Token>;
 
 /// This macro generates a function with the given name that checks if the current character
 /// in the input stream matches a specified character literal. If it matches, the function
@@ -93,7 +132,7 @@ type LexFn = fn(&mut Peekable<CharIndices<'_>>) -> Option<Token>;
 ///
 /// - `$fn_name`: The name of the generated function.
 /// - `$char`: The character literal (`'('`, `'='`, `'*'`, etc.) to match against the current input.
-/// - `$kind`: The `SyntaxKind` variant (or equivalent enum/constant) to assign to the resulting token.
+/// - `$kind`: The `SyntaxKind` variant (or equivalent enum) to assign to the resulting token.
 ///
 /// # Generated Function Signature
 ///
@@ -125,11 +164,11 @@ type LexFn = fn(&mut Peekable<CharIndices<'_>>) -> Option<Token>;
 /// ```
 macro_rules! define_lex_fn {
     ($fn_name:ident, $char:literal, $kind:expr) => {
-        fn $fn_name(chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>) -> Option<Token> {
-            let (start, ch) = *chars.peek()?;
+        fn $fn_name(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Option<Token> {
+            let ch = *chars.peek()?;
             if ch == $char {
                 chars.next();
-                Some(token!($kind, $char, start))
+                Some(token!($kind, $char, ch.len_utf16()))
             } else {
                 None
             }
@@ -285,17 +324,6 @@ macro_rules! define_punct_lexers {
         }
 
         /// .
-        pub fn len_utf16(kind: SyntaxKind) -> usize {
-            match kind {
-                $(
-                    $kind => $char.len_utf16(),
-                )*
-                _ => panic!("not a PUNCTUATION kind"),
-            }
-
-        }
-
-        /// .
         pub fn is_punctuation_kind(kind: SyntaxKind) -> bool {
             match kind {
                 $(
@@ -352,65 +380,11 @@ macro_rules! define_punct_lexers {
 ///
 /// ---
 #[macro_export]
-macro_rules! K {
+macro_rules! T {
     ($ch:tt) => {
         $crate::char_to_kind($ch)
     };
 }
-
-/// represents a single token emitted by `Lexer`
-#[derive(Clone, PartialEq, Eq)]
-pub struct TokenData {
-    text: String,
-    kind: SyntaxKind,
-    offset: usize,
-}
-
-/// set and get methods for TokenData
-impl TokenData {
-    /// Creates a new [`TokenData`].
-    pub fn new(kind: SyntaxKind, text: String, offset: usize) -> Self {
-        Self { kind, text, offset }
-    }
-
-    /// Returns a reference to the text of this [`TokenData`].
-    pub fn text(&self) -> &str {
-        &self.text
-    }
-
-    /// Returns the kind of this [`TokenData`].
-    pub fn kind(&self) -> SyntaxKind {
-        self.kind
-    }
-
-    /// Returns the offset of this [`TokenData`].
-    pub fn offset(&self) -> usize {
-        self.offset
-    }
-
-    /// Returns the text len of this [`TokenData`].
-    pub fn len(&self) -> usize {
-        self.text.len()
-    }
-
-    /// Returns the is empty of this [`TokenData`].
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-}
-
-impl Display for TokenData {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}@{}", self.kind, self.offset)
-    }
-}
-
-impl Debug for TokenData {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}@{} {:?}", self.kind, self.offset, self.text)
-    }
-}
-
 /// The `Lexer`
 ///
 /// # Fields
@@ -434,11 +408,9 @@ impl<'a> Lexer<'a> {
 
     /// Returns a reference to the lex of this [`Lexer`].
     pub fn lex(&mut self) -> Vec<Token> {
-        let mut chars = self.source.char_indices().peekable();
+        let mut chars = self.source.chars().peekable();
 
-        let eof_offset = self.source.chars().count();
-
-        while let Some(&(_, char)) = chars.peek() {
+        while let Some(&char) = chars.peek() {
             if let Some(&lex_fn) = punctuation_tokenizers().get(&char) {
                 if let Some(tok) = lex_fn(&mut chars) {
                     self.tokens.push(tok);
@@ -470,7 +442,8 @@ impl<'a> Lexer<'a> {
             chars.next();
         }
 
-        self.tokens.push(token!(SyntaxKind::Eof, '\0', eof_offset));
+        self.tokens
+            .push(token!(SyntaxKind::Eof, '\0', '\0'.len_utf16()));
         std::mem::take(&mut self.tokens)
     }
 }
@@ -529,25 +502,21 @@ define_punct_lexers![
 /// apart from `characters` within free-form and ranged verbatim segments (see free-form
 /// attached modifiers and verbatim ranged tags).
 /// -- TODO: should we check `verbatim` at lexing stage
-fn lex_escaped_char(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
-    let (offset, char) = *chars.peek()?;
+fn lex_escaped_char(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
+    let char = *chars.peek()?;
     if char != '\\' {
         return None;
     }
+    let mut len = char.len_utf16();
     chars.next(); // char is '\' so eat it
-
-    if let Some((_, char)) = chars.peek() {
+    if let Some(char) = chars.peek() {
         if char.is_punctuation() {
-            return Some(token!(
-                SyntaxKind::EscapedChar,
-                format!("\\{}", &char),
-                offset
-            ));
+            len += char.len_utf16();
+            return Some(token!(SyntaxKind::EscapedChar, format!("\\{}", &char), len));
         }
     }
-
     // if there is no punctuation char after `\` then lex it as `ForwardSlash`
-    Some(token!(SyntaxKind::ForwardSlash, '\\', offset))
+    Some(token!(SyntaxKind::ForwardSlash, '\\', len))
 }
 
 /// # Words
@@ -558,23 +527,28 @@ fn lex_escaped_char(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
 ///  outlined in the later sections of this document.
 ///
 ///  A `word` is considered to be any combination of `regular characters`.
-fn lex_text(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
-    let (offset, _) = *chars.peek()?;
+#[track_caller]
+fn lex_text(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
+    let char = *chars.peek()?;
+    if char.is_neorg_char() {
+        panic!("This is impossible!");
+    }
     // -- NOTE: we might need lex_verbatim function
 
     // no assestion and return None as we want everything to fall here
 
     let mut text = String::new();
-
-    while let Some((_, char)) = chars.peek() {
+    let mut len = 0;
+    while let Some(char) = chars.peek() {
         if char.is_neorg_char() {
             break;
         }
         text.push(*char);
+        len += char.len_utf16();
         chars.next();
     }
 
-    Some(token!(SyntaxKind::Word, text, offset))
+    Some(token!(SyntaxKind::Word, text, len))
 }
 
 /// helper trait can only be implemented on char
@@ -640,51 +614,51 @@ impl NorgChar for char {
     }
 }
 
-/// The following chars are considered line endings:
-///
-/// - `U+000A` — Line Feed (\n)
-/// - `U+000C` — Form Feed
-/// - `U+000D` — Carriage Return (\r)
-///
-/// The following line ending combinations are permitted:
-///
-/// - A single line feed (\n)
-/// - A single carriage return (\r)
-/// - A CRLF combo — carriage return immediately followed by line feed (\r\n)
-///
-/// This mirrors real-world newline conventions:
-///
-/// | OS               | Line Ending |
-/// |------------------|-------------|
-/// | Unix/Linux/macOS | \n          |
-/// | Windows          | \r\n        |
-/// | Classic Mac      | \r          |
-///
-fn lex_line_ending(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
-    let (offset, char) = *chars.peek()?;
+// The following chars are considered line endings:
+//
+// - `U+000A` — Line Feed (\n)
+// - `U+000C` — Form Feed
+// - `U+000D` — Carriage Return (\r)
+//
+// The following line ending combinations are permitted:
+//
+// - A single line feed (\n)
+// - A single carriage return (\r)
+// - A CRLF combo — carriage return immediately followed by line feed (\r\n)
+//
+// This mirrors real-world newline conventions:
+//
+// | OS               | Line Ending |
+// |------------------|-------------|
+// | Unix/Linux/macOS | \n          |
+// | Windows          | \r\n        |
+// | Classic Mac      | \r          |
+//
+fn lex_line_ending(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
+    let char = *chars.peek()?;
 
     if !char.is_line_ending() {
         return None;
     }
 
+    let mut len = char.len_utf16();
     chars.next();
-
     if char == '\r' {
-        if let Some((_, next_char)) = chars.peek() {
+        if let Some(next_char) = chars.peek() {
             if *next_char == '\n' {
+                len += next_char.len_utf16();
                 chars.next();
-                return Some(token!(SyntaxKind::LineEnding, "\r\n", offset));
+                return Some(token!(SyntaxKind::LineEnding, "\r\n", len));
             }
         }
     }
-
-    Some(token!(SyntaxKind::LineEnding, char, offset))
+    Some(token!(SyntaxKind::LineEnding, char, len))
 }
 
 #[test]
 fn test_lex_line_endings() {
     fn check(input: &str, expected: &str) {
-        let mut chars = input.char_indices().peekable();
+        let mut chars = input.chars().peekable();
         let token = lex_line_ending(&mut chars).expect("Expected line ending");
         assert_eq!(token.text(), expected);
     }
@@ -702,11 +676,11 @@ fn test_lex_line_endings() {
     check("\r\nnext", "\r\n");
 
     // Invalid: No line ending
-    let mut it = "hello".char_indices().peekable();
+    let mut it = "hello".chars().peekable();
     assert!(lex_line_ending(&mut it).is_none());
 
     // Only \r followed by EOF — should not panic
-    let mut it = "\r".char_indices().peekable();
+    let mut it = "\r".chars().peekable();
     let tok = lex_line_ending(&mut it).unwrap();
     assert_eq!(tok.text(), "\r");
 }
@@ -732,38 +706,36 @@ fn test_lex_line_endings() {
 ///          though the spec says
 ///          cuz, it mess up the spans / offset (and the concept of CST)
 ///          maybe a warning should be provided while parsing, with low severity
-fn lex_white_space(chars: &mut Peekable<CharIndices<'_>>) -> Option<Token> {
-    let (offset, _) = *chars.peek()?;
+fn lex_white_space(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
     if chars
         .peek()
         .copied()
-        .map(|(_, char)| char.is_zs_whitespace() && char != '\n')
+        .map(|char| char.is_zs_whitespace() && char != '\n')
         != Some(true)
     {
         return None;
     }
+    let mut len: usize = 0;
     let mut text = String::new();
-    while let Some((_, char)) = chars.peek() {
+    while let Some(char) = chars.peek() {
         if char.is_zs_whitespace() && *char != '\n' {
+            len += char.len_utf16();
             text.push(*char);
             chars.next();
         } else {
             break;
         }
     }
-    Some(token!(SyntaxKind::WhiteSpace, text, offset))
-}
-
-struct Pos {
-    line: usize,
-    col: usize,
+    Some(token!(SyntaxKind::WhiteSpace, text, len))
 }
 
 /// .
 #[derive(Debug)]
 pub struct Spanned<T> {
-    item: T,
-    span: crate::Span,
+    /// .
+    pub item: T,
+    /// .
+    pub span: crate::Span,
 }
 /// .
 pub fn auto_spans(tokens: Vec<Token>) -> Vec<Spanned<Token>> {
@@ -771,11 +743,10 @@ pub fn auto_spans(tokens: Vec<Token>) -> Vec<Spanned<Token>> {
     let mut result = Vec::new();
     for i in tokens {
         let start = pos;
-        if i.
-        let end = start + i.text().len();
+        let end = start + i.len();
         result.push(Spanned {
             item: i,
-            span: crate::Span { start: pos, end },
+            span: crate::Span { start, end },
         });
         pos = end
     }
@@ -796,6 +767,11 @@ fn auto() {
 
     insta::with_settings!({ snapshot_path => snapshot_path, prepend_module_to_snapshot => false }, {
         insta::assert_debug_snapshot!(spanned);
+          let input = "🙂⚠️©®€🤯⌘";
+        let mut binding = Lexer::new(input);
+        let tokens = binding.lex();
+        insta::assert_debug_snapshot!(tokens);
+
     });
 }
 
@@ -807,10 +783,11 @@ fn test_whitespace() {
         '\u{202F}', '\u{205F}', '\u{3000}'
     );
     let spoiled = ws.to_owned() + "!@#$%^&*()";
-    let mut chars = spoiled.char_indices().peekable();
+    let mut chars = spoiled.chars().peekable();
     let token = lex_white_space(&mut chars).expect("Expected WhiteSpace");
     let text = &token.text;
     assert_eq!(text, ws);
+    assert_eq!(17, token.len());
 }
 
 #[cfg(test)]
@@ -822,7 +799,7 @@ mod test {
     #[test]
     fn test_ws() {
         let input = "     ";
-        let re = lex_white_space(&mut input.char_indices().peekable());
+        let re = lex_white_space(&mut input.chars().peekable());
         if let Some(tok) = re {
             assert_eq!(tok.kind, SyntaxKind::WhiteSpace);
             assert_eq!(tok.text.len(), 5);
@@ -847,7 +824,7 @@ mod test {
         let tok = token!(SyntaxKind::Equal, "=", 10);
         assert_eq!(tok.kind(), SyntaxKind::Equal);
         assert_eq!(tok.text(), "=");
-        assert_eq!(tok.offset(), 10);
+        assert_eq!(tok.len(), 10);
     }
 
     #[test]

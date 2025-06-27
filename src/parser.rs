@@ -142,7 +142,7 @@ impl Parser {
 #[tracing::instrument(skip_all)]
 pub fn parse_italics(p: &mut Parser) {
     let m = p.start();
-    p.assert(K!('/')); // assert & consume '/'
+    p.assert(T!('/')); // assert & consume '/'
     p.eat();
     let _tok = p.current();
     // if tok.is_inline_expr() {
@@ -151,7 +151,7 @@ pub fn parse_italics(p: &mut Parser) {
     parse_text_chunk(p);
     // }
 
-    p.expect_closing_delimiter(m, K!('/'));
+    p.expect_closing_delimiter(m, T!('/'));
     p.wrap(m, SyntaxKind::Emph);
 }
 
@@ -163,11 +163,11 @@ pub fn parse_italics(p: &mut Parser) {
 #[tracing::instrument(skip_all)]
 fn parse_verbatim(p: &mut Parser) {
     let m = p.start();
-    p.assert(K!('|'));
+    p.assert(T!('|'));
 
     parse_verbatim_chunk(p);
 
-    p.expect_closing_delimiter(m, K!('|'));
+    p.expect_closing_delimiter(m, T!('|'));
     p.wrap(m, SyntaxKind::Verbatim);
 }
 

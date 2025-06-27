@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use std::sync::Arc;
-use std::usize;
 
 use crate::{Span, SyntaxKind, Token, token};
 
@@ -178,8 +177,8 @@ impl LeafNode {
             kind: token.kind(),
             text: token.text().into(),
             span: Span {
-                start: token.offset(),
-                end: token.offset() + token.len(),
+                start: token.len(),
+                end: token.len() + token.len(),
             },
         }
     }
