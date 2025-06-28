@@ -84,3 +84,29 @@ pub const PUNCTUATION: SyntaxSet = syntax_set!(
     RCurly,
     Tilda
 );
+
+/// - *bold*
+/// - /italic/
+/// - _underline_
+/// - -strike-through-  TODO:
+/// - !spoiler!
+/// - ^superscript^ (cannot be nested into `subscript`)
+/// - ,subscript, (cannot be nested into `superscript`)
+/// - `inline code` (disables any nested markup - verbatim)
+/// - `%null modifier%`
+/// - $f(x) = y$ (verbatim)
+/// - &variable& (verbatim)
+/// no  Pipe, here -- NOTE: 
+pub const ATACHED_MODIFIERS: SyntaxSet = syntax_set!(
+    Asterisk,
+    Slash,
+    Underscore,
+    Hyphen,
+    Exclamation,
+    Caret,
+    Comma,
+    Backtick,
+    Percent,
+    Dollar,
+    Ampersand,
+);

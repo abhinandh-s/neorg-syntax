@@ -103,27 +103,27 @@ macro_rules! token {
     };
 }
 
-#[doc = r###"A lexical analysis function type used in the tokenizer/lexer stage.
-
-[`LexFn`] represents the type of functions that accept a mutable reference to a
-`Peekable<Chars>` iterator and return an optional `Token`.
-
-# Returns
-
-- `Some(Token)`: If the function successfully lexes a valid token from the input.
-
-# Example
-
-```
-use  std::iter::Peekable;
-
-fn lex_something<Token>(chars: &mut Peekable<std::str::Chars<'_>>) -> Option<Token> {
-        None
-}
-```
-
-This become handy when we put it in `HashMap`.
-Any function with this Signature can be tied together."###]
+/// A lexical analysis function type used in the tokenizer/lexer stage.
+///
+/// [`LexFn`] represents the type of functions that accept a mutable reference to a
+/// `Peekable<Chars>` iterator and return an optional `Token`.
+///
+/// # Returns
+///
+/// - `Some(Token)`: If the function successfully lexes a valid token from the input.
+///
+/// # Example
+///
+/// ```
+/// use  std::iter::Peekable;
+///
+/// fn lex_something<Token>(chars: &mut Peekable<std::str::Chars<'_>>) -> Option<Token> {
+///         None
+/// }
+/// ```
+///
+/// This become handy when we put it in `HashMap`.
+/// Any function with this Signature can be tied together.
 type LexFn = fn(&mut Peekable<Chars<'_>>) -> Option<Token>;
 
 /// This macro generates a function with the given name that checks if the current character
@@ -453,16 +453,6 @@ impl<'a> Lexer<'a> {
     }
 }
 
-trait NeorgChar: char::Sealed {
-    fn is_neorg_char(&self) -> bool;
-}
-
-impl NeorgChar for char {
-    fn is_neorg_char(&self) -> bool {
-        self.is_punctuation() || self.is_zs_whitespace() || self.is_line_ending()
-    }
-}
-
 define_punct_lexers![
     ('&', lex_ampersand, SyntaxKind::Ampersand),
     ('?', lex_question_mark, SyntaxKind::QuestionMark),
@@ -561,13 +551,18 @@ fn lex_text(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
 /// `clippy` will complain about the `self` in trait.
 /// since we Sealed the trait on `char` puting `self` is fine
 #[allow(clippy::wrong_self_convention)]
-trait NorgChar: char::Sealed {
+trait NeorgChar: char::Sealed {
+    fn is_neorg_char(&self) -> bool;
     fn is_zs_whitespace(self) -> bool;
     fn is_line_ending(self) -> bool;
 }
 
 #[rustfmt::skip]
-impl NorgChar for char {
+impl NeorgChar for char {
+    fn is_neorg_char(&self) -> bool {
+        self.is_punctuation() || self.is_zs_whitespace() || self.is_line_ending()
+    }
+
     /// # Unicode Characters in the 'Separator, Space' Category
     ///
     /// <https://www.fileformat.info/info/unicode/category/Zs/list.htm>

@@ -73,6 +73,12 @@ impl Parser {
         self.cursor += 1;
     }
 
+    fn eat_many(&mut self, eatable: SyntaxSet) {
+        while self.at_set(eatable) {
+            self.eat();
+        }
+    }
+
     /// Eat the token if at `kind`. Returns `true` if eaten.
     ///
     /// Note: In Math and Code, this will ignore trivia in front of the
@@ -285,31 +291,34 @@ fn parse_bold(p: &mut Parser) {
 }
 
 assert_tree!(
-    // normal
-    parse_emph_01,
+    // [case:01] bold
+    bold_01,
     parse_bold,
-    "*a verbatim text chunk* sdffd"
+    "*a bold text chunk* sdffd"
 );
 
 assert_tree!(
-    // normal
-    parse_emph_02,
+    // [case:02] not bold
+    // error: WhiteSpace at beginning
+    bold_02,
     parse_bold,
-    "* a verbatim text chunk* sdffd"
+    "* a bold text chunk* sdffd"
 );
 
 assert_tree!(
-    // normal
-    parse_emph_03,
+    // [case:03] not bold
+    // error: WhiteSpace at end
+    bold_03,
     parse_bold,
-    "*a verbatim text chunk * sdffd"
+    "*a bold text chunk * sdffd"
 );
 
 assert_tree!(
+    // [case:04] not bold
     // error: WhiteSpace at both end
-    parse_emph_04,
+    bold_04,
     parse_bold,
-    "* a verbatim text chunk * sdffd"
+    "* a bold text chunk * sdffd"
 );
 
 /// # Deals with:
@@ -422,15 +431,23 @@ fn parse_para_segment(p: &mut Parser) {
     let m = p.start();
 
     while !p.at_set(syntax_set!(LineEnding, Eof)) {
-        if p.at_set(PUNCTUATION) {
+        if p.at_set(ATACHED_MODIFIERS.add(SyntaxKind::Pipe)) {
             parse_attached_modifiers(p);
         } else {
-            parse_nm_text_chunk(p);
+            let amod_stoper = ATACHED_MODIFIERS
+                .add(SyntaxKind::Pipe)
+                .add(SyntaxKind::LineEnding)
+                .add(SyntaxKind::Eof);
+            while !p.at_set(amod_stoper) {
+                p.eat();
+            }
         }
     }
     p.expect(SyntaxKind::LineEnding);
     p.wrap(m, SyntaxKind::ParaSegment);
 }
+
+assert_tree!(para_segment_01, parse_para_segment, "this is a ()  *bold* /italic/ _underline_   |-strike-through-| !spoiler! ^superscript^ ,subscript, `inline code` %null modifier% &variable& ");
 
 /// Their name should be rather self-explanatory - both the opening and closing modifier
 /// are _attached_ to one another.
@@ -494,62 +511,62 @@ macro_rules! assert_tree {
 
 #[cfg(test)]
 mod test {
-    assert_tree!(parse_verbatim_05, parse_verbatim, "|this is a test");
-    assert_tree!(parse_verbatim_01, parse_verbatim, "|this is a test|");
-    assert_tree!(parse_verbatim_02, parse_verbatim, "| this is a test |");
+    assert_tree!(verbatim_05, parse_verbatim, "|this is a test");
+    assert_tree!(verbatim_01, parse_verbatim, "|this is a test|");
+    assert_tree!(verbatim_02, parse_verbatim, "| this is a test |");
     assert_tree!(
-        parse_verbatim_03,
+        verbatim_03,
         parse_verbatim,
         r###"|~ this is a test !"#$%&'()*+,-./:;<=>?@[]^_`{}~\thre|"###
     );
-    assert_tree!(parse_verbatim_04, parse_verbatim, r###"|~ `{}~\thre|"###);
-    assert_tree!(parse_text_chunk_01, parse_text_chunk, "this is text chunk");
+    assert_tree!(verbatim_04, parse_verbatim, r###"|~ `{}~\thre|"###);
+    assert_tree!(text_chunk_01, parse_text_chunk, "this is text chunk");
     assert_tree!(
-        parse_text_chunk_01_err,
+        text_chunk_01_err,
         parse_text_chunk,
         "this is text chunk / not this"
     );
     assert_tree!(
-        parse_para_segment_01,
+        para_segment_01,
         parse_para_segment,
         "this is |a verbatim text chunk|"
     );
     assert_tree!(
-        parse_para_segment_01_err,
+        para_segment_01_err,
         parse_para_segment,
         "this is |a verbatim text chunk"
     );
     assert_tree!(
-        parse_para_segment_02_err,
+        para_segment_02_err,
         parse_para_segment,
         "this is |a verbatim text chunk|\nthis is next"
     );
     assert_tree!(
-        parse_para_segment_03_err,
+        para_segment_03_err,
         parse_para_segment,
         "this isrbatim text chunk\nthis is next"
     );
     assert_tree!(
-        parse_paragraph_01,
+        paragraph_01,
         parse_paragraph,
         "this isrbatim text chunk\nthis is next"
     );
     assert_tree!(
-        parse_paragraph_02,
+        paragraph_02,
         parse_paragraph,
         r#"I am a paragraph segment
 I am another paragraph segment
  Together we form a paragraph"#
     );
     assert_tree!(
-        parse_paragraph_03,
+        paragraph_03,
         parse_paragraph,
         r#"I am a paragraph segment.
 I am another paragraph segment.
     Together we form a paragraph."#
     );
     assert_tree!(
-        parse_paragraph_with_verbatim_01,
+        paragraph_with_verbatim_01,
         parse_paragraph,
         r#"I am a paragraph segment.
 I am another paragraph segment.
@@ -557,7 +574,7 @@ this |is verbatim| content
     Together we form a paragraph."#
     );
     assert_tree!(
-        parse_paragraph_with_verbatim_emph_01,
+        paragraph_with_verbatim_emph_01,
         parse_paragraph,
         r#"I am a paragraph segment.
 I am another paragraph segment.
@@ -571,7 +588,7 @@ this |is verbatim| content *this is bold*
     //
     // `LineEnding` after a `LineEnding`
     assert_tree!(
-        parse_parabreak_01,
+        parabreak_01,
         parse_paragraph,
         r#" I am a paragraph segment.
 I am another paragraph segment.
@@ -586,7 +603,7 @@ this |is verbatim| content *this is bold*
     //
     // empty line with many `WhiteSpace` followed by `LineEnding`
     assert_tree!(
-        parse_parabreak_02,
+        parabreak_02,
         parse_paragraph,
         r#" I am a paragraph segment.
 I am another paragraph segment.
@@ -598,9 +615,10 @@ this |is verbatim| content *this is bold*
         parse_02,
         parse_paragraph,
         r#" I am a paragraph segment.
+
 I am another paragraph segment.
  are _attached_ to one another.
-
+([{}])
   *bold*
   /italic/
   _underline_

@@ -2,14 +2,14 @@
 source: src/parser.rs
 expression: output
 ---
-Emph
-  Asterisk: "*"
+Verbatim
+  Pipe: "|"
   TextChunk
+    Word: "this"
+    WhiteSpace: " "
+    Word: "is"
+    WhiteSpace: " "
     Word: "a"
     WhiteSpace: " "
-    Word: "verbatim"
-    WhiteSpace: " "
-    Word: "text"
-    WhiteSpace: " "
-    Word: "chunk"
-  Asterisk: "*"
+    Word: "test"
+  Pipe: "|"

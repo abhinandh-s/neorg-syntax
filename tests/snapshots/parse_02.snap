@@ -4,56 +4,59 @@ expression: output
 ---
 Paragraph
   ParaSegment
-    TextChunk
-      WhiteSpace: " "
-      Word: "I"
-      WhiteSpace: " "
-      Word: "am"
-      WhiteSpace: " "
-      Word: "a"
-      WhiteSpace: " "
-      Word: "paragraph"
-      WhiteSpace: " "
-      Word: "segment"
-      Dot: "."
+    WhiteSpace: " "
+    Word: "I"
+    WhiteSpace: " "
+    Word: "am"
+    WhiteSpace: " "
+    Word: "a"
+    WhiteSpace: " "
+    Word: "paragraph"
+    WhiteSpace: " "
+    Word: "segment"
+    Dot: "."
+    LineEnding: "\n"
+  ParaBreak
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      Word: "I"
-      WhiteSpace: " "
-      Word: "am"
-      WhiteSpace: " "
-      Word: "another"
-      WhiteSpace: " "
-      Word: "paragraph"
-      WhiteSpace: " "
-      Word: "segment"
-      Dot: "."
+    Word: "I"
+    WhiteSpace: " "
+    Word: "am"
+    WhiteSpace: " "
+    Word: "another"
+    WhiteSpace: " "
+    Word: "paragraph"
+    WhiteSpace: " "
+    Word: "segment"
+    Dot: "."
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: " "
-      Word: "are"
-      WhiteSpace: " "
+    WhiteSpace: " "
+    Word: "are"
+    WhiteSpace: " "
     UnderLine
       Underscore: "_"
       TextChunk
         Word: "attached"
       Underscore: "_"
-    TextChunk
-      WhiteSpace: " "
-      Word: "to"
-      WhiteSpace: " "
-      Word: "one"
-      WhiteSpace: " "
-      Word: "another"
-      Dot: "."
-    LineEnding: "\n"
-  ParaBreak
+    WhiteSpace: " "
+    Word: "to"
+    WhiteSpace: " "
+    Word: "one"
+    WhiteSpace: " "
+    Word: "another"
+    Dot: "."
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "  "
+    LParen: "("
+    LSquare: "["
+    LCurly: "{"
+    RCurly: "}"
+    RSquare: "]"
+    RParen: ")"
+    LineEnding: "\n"
+  ParaSegment
+    WhiteSpace: "  "
     Emph
       Asterisk: "*"
       TextChunk
@@ -61,8 +64,7 @@ Paragraph
       Asterisk: "*"
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "  "
+    WhiteSpace: "  "
     Italics
       Slash: "/"
       TextChunk
@@ -70,8 +72,7 @@ Paragraph
       Slash: "/"
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "  "
+    WhiteSpace: "  "
     UnderLine
       Underscore: "_"
       TextChunk
@@ -79,8 +80,7 @@ Paragraph
       Underscore: "_"
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "  "
+    WhiteSpace: "  "
     Verbatim
       Pipe: "|"
       TextChunk
@@ -92,8 +92,7 @@ Paragraph
       Pipe: "|"
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "  "
+    WhiteSpace: "  "
     Spoiler
       Exclamation: "!"
       TextChunk
@@ -101,8 +100,7 @@ Paragraph
       Exclamation: "!"
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "  "
+    WhiteSpace: "  "
     Superscript
       Caret: "^"
       TextChunk
@@ -110,8 +108,7 @@ Paragraph
       Caret: "^"
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "  "
+    WhiteSpace: "  "
     Subscript
       Comma: ","
       TextChunk
@@ -119,8 +116,7 @@ Paragraph
       Comma: ","
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "  "
+    WhiteSpace: "  "
     InlineCode
       Backtick: "`"
       TextChunk
@@ -130,8 +126,7 @@ Paragraph
       Backtick: "`"
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "  "
+    WhiteSpace: "  "
     InlineCode
       Error: "`" (unclosed delimiter)
       TextChunk
@@ -147,20 +142,17 @@ Paragraph
       TextChunk
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "  "
+    WhiteSpace: "  "
     Variable
       Ampersand: "&"
       TextChunk
         Word: "variable"
       Ampersand: "&"
-    TextChunk
-      WhiteSpace: " "
+    WhiteSpace: " "
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      Word: "this"
-      WhiteSpace: " "
+    Word: "this"
+    WhiteSpace: " "
     Verbatim
       Pipe: "|"
       TextChunk
@@ -168,10 +160,9 @@ Paragraph
         WhiteSpace: " "
         Word: "verbatim"
       Pipe: "|"
-    TextChunk
-      WhiteSpace: " "
-      Word: "content"
-      WhiteSpace: " "
+    WhiteSpace: " "
+    Word: "content"
+    WhiteSpace: " "
     Emph
       Asterisk: "*"
       TextChunk
@@ -183,15 +174,14 @@ Paragraph
       Asterisk: "*"
     LineEnding: "\n"
   ParaSegment
-    TextChunk
-      WhiteSpace: "    "
-      Word: "Together"
-      WhiteSpace: " "
-      Word: "we"
-      WhiteSpace: " "
-      Word: "form"
-      WhiteSpace: " "
-      Word: "a"
-      WhiteSpace: " "
-      Word: "paragraph"
-      Dot: "."
+    WhiteSpace: "    "
+    Word: "Together"
+    WhiteSpace: " "
+    Word: "we"
+    WhiteSpace: " "
+    Word: "form"
+    WhiteSpace: " "
+    Word: "a"
+    WhiteSpace: " "
+    Word: "paragraph"
+    Dot: "."

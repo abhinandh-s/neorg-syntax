@@ -7,7 +7,7 @@ Emph
   TextChunk
     Word: "a"
     WhiteSpace: " "
-    Word: "verbatim"
+    Word: "bold"
     WhiteSpace: " "
     Word: "text"
     WhiteSpace: " "

@@ -4,14 +4,12 @@ expression: output
 ---
 Emph
   Asterisk: "*"
-  Error: " " (unexpected WhiteSpace)
   TextChunk
     Word: "a"
     WhiteSpace: " "
-    Word: "verbatim"
+    Word: "bold"
     WhiteSpace: " "
     Word: "text"
     WhiteSpace: " "
     Word: "chunk"
-    Error: " " (unexpected WhiteSpace)
   Asterisk: "*"

@@ -2,12 +2,12 @@
 source: src/parser.rs
 expression: output
 ---
-ParaSegment
+TextChunk
   Word: "this"
   WhiteSpace: " "
-  Word: "isrbatim"
+  Word: "is"
   WhiteSpace: " "
   Word: "text"
   WhiteSpace: " "
   Word: "chunk"
-  LineEnding: "\n"
+  Error: " " (unexpected WhiteSpace)
