@@ -2,14 +2,15 @@
 source: src/parser.rs
 expression: output
 ---
-Bold
-  Asterisk: "*"
+Italics
+  Slash: "/"
   TextChunk
-    Word: "a"
+    Word: "an"
     WhiteSpace: " "
-    Word: "bold"
+    Word: "italics"
     WhiteSpace: " "
     Word: "text"
     WhiteSpace: " "
     Word: "chunk"
-  Asterisk: "*"
+    Error: " " (unexpected WhiteSpace)
+  Slash: "/"

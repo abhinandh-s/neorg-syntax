@@ -57,131 +57,137 @@ Paragraph
     LineEnding: "\n"
   ParaSegment
     WhiteSpace: "  "
-    Emph
-      Asterisk: "*"
+    Bold
+      Error: "*" (unclosed delimiter)
       TextChunk
         Word: "bold"
-      Asterisk: "*"
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "  "
-    Italics
-      Slash: "/"
-      TextChunk
-        Word: "italic"
-      Slash: "/"
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "  "
-    UnderLine
-      Underscore: "_"
-      TextChunk
-        Word: "underline"
-      Underscore: "_"
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "  "
-    Verbatim
-      Pipe: "|"
-      TextChunk
-        Hyphen: "-"
-        Word: "strike"
-        Hyphen: "-"
-        Word: "through"
-        Hyphen: "-"
-      Pipe: "|"
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "  "
-    Spoiler
-      Exclamation: "!"
-      TextChunk
-        Word: "spoiler"
-      Exclamation: "!"
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "  "
-    Superscript
-      Caret: "^"
-      TextChunk
-        Word: "superscript"
-      Caret: "^"
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "  "
-    Subscript
-      Comma: ","
-      TextChunk
-        Word: "subscript"
-      Comma: ","
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "  "
-    InlineCode
-      Backtick: "`"
-      TextChunk
-        Word: "inline"
-        WhiteSpace: " "
-        Word: "code"
-      Backtick: "`"
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "  "
-    InlineCode
-      Error: "`" (unclosed delimiter)
-      TextChunk
-    NullModifier
-      Percent: "%"
-      TextChunk
-        Word: "null"
-        WhiteSpace: " "
-        Word: "modifier"
-      Percent: "%"
-    InlineCode
-      Error: "`" (unclosed delimiter)
-      TextChunk
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "  "
-    Variable
-      Ampersand: "&"
-      TextChunk
-        Word: "variable"
-      Ampersand: "&"
-    WhiteSpace: " "
-    LineEnding: "\n"
-  ParaSegment
-    Word: "this"
-    WhiteSpace: " "
-    Verbatim
-      Pipe: "|"
-      TextChunk
-        Word: "is"
-        WhiteSpace: " "
-        Word: "verbatim"
-      Pipe: "|"
-    WhiteSpace: " "
-    Word: "content"
-    WhiteSpace: " "
-    Emph
-      Asterisk: "*"
-      TextChunk
-        Word: "this"
-        WhiteSpace: " "
-        Word: "is"
-        WhiteSpace: " "
-        Word: "bold"
-      Asterisk: "*"
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "    "
-    Word: "Together"
-    WhiteSpace: " "
-    Word: "we"
-    WhiteSpace: " "
-    Word: "form"
-    WhiteSpace: " "
-    Word: "a"
-    WhiteSpace: " "
-    Word: "paragraph"
-    Dot: "."
+      Bold
+        Error: "*" (unclosed delimiter)
+        TextChunk
+          Error: "\n" (unexpected LineEnding)
+          Error: "  " (unexpected WhiteSpace)
+        Italics
+          Error: "/" (unclosed delimiter)
+          TextChunk
+            Word: "italic"
+          Italics
+            Error: "/" (unclosed delimiter)
+            TextChunk
+              Error: "\n" (unexpected LineEnding)
+              Error: "  " (unexpected WhiteSpace)
+            UnderLine
+              Error: "_" (unclosed delimiter)
+              TextChunk
+                Word: "underline"
+              UnderLine
+                Error: "_" (unclosed delimiter)
+                TextChunk
+                  Error: "\n" (unexpected LineEnding)
+                  WhiteSpace: "  "
+                Verbatim
+                  Pipe: "|"
+                  TextChunk
+                    Hyphen: "-"
+                    Word: "strike"
+                    Hyphen: "-"
+                    Word: "through"
+                    Hyphen: "-"
+                  Pipe: "|"
+                TextChunk
+                  Error: "\n" (unexpected LineEnding)
+                  Error: "  " (unexpected WhiteSpace)
+                Spoiler
+                  Error: "!" (unclosed delimiter)
+                  TextChunk
+                    Word: "spoiler"
+                  Spoiler
+                    Error: "!" (unclosed delimiter)
+                    TextChunk
+                      Error: "\n" (unexpected LineEnding)
+                      Error: "  " (unexpected WhiteSpace)
+                    Superscript
+                      Caret: "^"
+                      TextChunk
+                        Word: "superscript"
+                      Caret: "^"
+                    TextChunk
+                      Error: "\n" (unexpected LineEnding)
+                      Error: "  " (unexpected WhiteSpace)
+                    Subscript
+                      Comma: ","
+                      TextChunk
+                        Word: "subscript"
+                      Comma: ","
+                    TextChunk
+                      Error: "\n" (unexpected LineEnding)
+                      Error: "  " (unexpected WhiteSpace)
+                    InlineCode
+                      Backtick: "`"
+                      TextChunk
+                        Word: "inline"
+                        WhiteSpace: " "
+                        Word: "code"
+                      Backtick: "`"
+                    TextChunk
+                      Error: "\n" (unexpected LineEnding)
+                      Error: "  " (unexpected WhiteSpace)
+                    InlineCode
+                      Error: "`" (unclosed delimiter)
+                      TextChunk
+                    NullModifier
+                      Error: "%" (unclosed delimiter)
+                      TextChunk
+                        Word: "null"
+                        WhiteSpace: " "
+                        Word: "modifier"
+                      NullModifier
+                        Error: "%" (unclosed delimiter)
+                        InlineCode
+                          Error: "`" (unclosed delimiter)
+                          TextChunk
+                            Error: "\n" (unexpected LineEnding)
+                            Error: "  " (unexpected WhiteSpace)
+                        Variable
+                          Ampersand: "&"
+                          TextChunk
+                            Word: "variable"
+                          Ampersand: "&"
+                        TextChunk
+                          WhiteSpace: " "
+                          Error: "\n" (unexpected LineEnding)
+                          Word: "this"
+                          WhiteSpace: " "
+                        Verbatim
+                          Pipe: "|"
+                          TextChunk
+                            Word: "is"
+                            WhiteSpace: " "
+                            Word: "verbatim"
+                          Pipe: "|"
+                        TextChunk
+                          WhiteSpace: " "
+                          Word: "content"
+                          Error: " " (unexpected WhiteSpace)
+                        Bold
+                          Error: "*" (unclosed delimiter)
+                          TextChunk
+                            Word: "this"
+                            WhiteSpace: " "
+                            Word: "is"
+                            WhiteSpace: " "
+                            Word: "bold"
+                          Bold
+                            Error: "*" (unclosed delimiter)
+                            TextChunk
+                              Error: "\n" (unexpected LineEnding)
+                              WhiteSpace: "    "
+                              Word: "Together"
+                              WhiteSpace: " "
+                              Word: "we"
+                              WhiteSpace: " "
+                              Word: "form"
+                              WhiteSpace: " "
+                              Word: "a"
+                              WhiteSpace: " "
+                              Word: "paragraph"
+                              Dot: "."

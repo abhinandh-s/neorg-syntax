@@ -1,0 +1,44 @@
+---
+source: src/parser.rs
+expression: output
+---
+Italics
+  Slash: "/"
+  TextChunk
+    Word: "an"
+    WhiteSpace: " "
+    Word: "italics"
+    WhiteSpace: " "
+    Word: "text"
+    WhiteSpace: " "
+    Word: "chunk"
+    WhiteSpace: " "
+    Word: "and"
+    WhiteSpace: " "
+    Word: "it"
+    WhiteSpace: " "
+    Word: "have"
+    WhiteSpace: " "
+    Word: "a"
+    WhiteSpace: " "
+  Verbatim
+    Pipe: "|"
+    TextChunk
+      WhiteSpace: " "
+      Word: "verbatim"
+      WhiteSpace: " "
+    Pipe: "|"
+  TextChunk
+    WhiteSpace: " "
+    Word: "chunk"
+    WhiteSpace: " "
+    Word: "in"
+    WhiteSpace: " "
+    Word: "it"
+    WhiteSpace: " "
+    Colon: ":"
+    RParen: ")"
+  Slash: "/"
+  TextChunk
+    Word: "blah"
+  Slash: "/"

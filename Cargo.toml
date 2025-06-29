@@ -25,7 +25,8 @@ tower-lsp = { version = "0.20.0", optional = true }
 [dev-dependencies]
 insta = "1.42.1"
 expect-test = "1.5.1"
-quicktest = "1.0.7"
+quickcheck = "1"
+proptest = "1"
 
 [package.metadata.insta]
 snapshot-path = "tests/snapshots"

@@ -2,19 +2,19 @@
 source: src/parser.rs
 expression: output
 ---
-Paragraph
-  ParaSegment
-    Word: "this"
+Italics
+  Error: "/" (unclosed delimiter)
+  TextChunk
+    Word: "an"
     WhiteSpace: " "
-    Word: "isrbatim"
+    Word: "italics"
     WhiteSpace: " "
     Word: "text"
     WhiteSpace: " "
     Word: "chunk"
-    LineEnding: "\n"
-  ParaSegment
-    Word: "this"
     WhiteSpace: " "
-    Word: "is"
+    Word: "blah"
     WhiteSpace: " "
-    Word: "next"
+    Word: "blah"
+    WhiteSpace: " "
+    Word: "blah"

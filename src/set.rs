@@ -51,7 +51,7 @@ macro_rules! syntax_set {
 
 /// Syntax kinds that can start a `|!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~|`.
 /// Dot is excluded from PUNCTUATION's set
-pub const PUNCTUATION: SyntaxSet = syntax_set!(
+pub const PUNCTUATIONS: SyntaxSet = syntax_set!(
     Exclamation,
     DoubleQoute,
     Pound,
@@ -88,15 +88,16 @@ pub const PUNCTUATION: SyntaxSet = syntax_set!(
 /// - *bold*
 /// - /italic/
 /// - _underline_
-/// - -strike-through-  TODO:
+/// - -strike-through-
 /// - !spoiler!
-/// - ^superscript^ (cannot be nested into `subscript`)
-/// - ,subscript, (cannot be nested into `superscript`)
-/// - `inline code` (disables any nested markup - verbatim)
 /// - `%null modifier%`
-/// - $f(x) = y$ (verbatim)
+/// - TODO: ^superscript^ (cannot be nested into `subscript`)
+/// - TODO: ,subscript, (cannot be nested into `superscript`)
+/// - TODO: `inline code` (disables any nested markup - verbatim)
+/// - TODO: $f(x) = y$ (verbatim)
 /// - &variable& (verbatim)
-/// no  Pipe, here -- NOTE: 
+/// 
+/// -- NOTE: no `Pipe` here 
 pub const ATACHED_MODIFIERS: SyntaxSet = syntax_set!(
     Asterisk,
     Slash,

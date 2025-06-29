@@ -2,14 +2,14 @@
 source: src/parser.rs
 expression: output
 ---
-Verbatim
-  Pipe: "|"
+Italics
+  Slash: "/"
   TextChunk
-    Word: "this"
+    Word: "an"
     WhiteSpace: " "
-    Word: "is"
+    Word: "italics"
     WhiteSpace: " "
-    Word: "a"
+    Word: "text"
     WhiteSpace: " "
-    Word: "test"
-  Pipe: "|"
+    Word: "chunk"
+  Slash: "/"

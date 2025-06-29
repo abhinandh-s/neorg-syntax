@@ -2,8 +2,9 @@
 source: src/parser.rs
 expression: output
 ---
-Emph
+Bold
   Asterisk: "*"
+  Error: " " (unexpected WhiteSpace)
   TextChunk
     Word: "a"
     WhiteSpace: " "
@@ -12,5 +13,4 @@ Emph
     Word: "text"
     WhiteSpace: " "
     Word: "chunk"
-    Error: " " (unexpected WhiteSpace)
   Asterisk: "*"

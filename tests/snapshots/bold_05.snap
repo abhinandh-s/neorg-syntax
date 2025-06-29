@@ -3,7 +3,8 @@ source: src/parser.rs
 expression: output
 ---
 Bold
-  Error: "*" (unclosed delimiter)
+  Asterisk: "*"
+  Error: " " (unexpected WhiteSpace)
   TextChunk
     Word: "a"
     WhiteSpace: " "
@@ -12,9 +13,5 @@ Bold
     Word: "text"
     WhiteSpace: " "
     Word: "chunk"
-    WhiteSpace: " "
-    Word: "blah"
-    WhiteSpace: " "
-    Word: "blah"
-    WhiteSpace: " "
-    Word: "blah"
+    Error: " " (unexpected WhiteSpace)
+  Asterisk: "*"

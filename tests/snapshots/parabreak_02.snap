@@ -44,25 +44,26 @@ Paragraph
     WhiteSpace: " "
     Word: "content"
     WhiteSpace: " "
-    Emph
-      Asterisk: "*"
+    Bold
+      Error: "*" (unclosed delimiter)
       TextChunk
         Word: "this"
         WhiteSpace: " "
         Word: "is"
         WhiteSpace: " "
         Word: "bold"
-      Asterisk: "*"
-    LineEnding: "\n"
-  ParaSegment
-    WhiteSpace: "    "
-    Word: "Together"
-    WhiteSpace: " "
-    Word: "we"
-    WhiteSpace: " "
-    Word: "form"
-    WhiteSpace: " "
-    Word: "a"
-    WhiteSpace: " "
-    Word: "paragraph"
-    Dot: "."
+      Bold
+        Error: "*" (unclosed delimiter)
+        TextChunk
+          Error: "\n" (unexpected LineEnding)
+          WhiteSpace: "    "
+          Word: "Together"
+          WhiteSpace: " "
+          Word: "we"
+          WhiteSpace: " "
+          Word: "form"
+          WhiteSpace: " "
+          Word: "a"
+          WhiteSpace: " "
+          Word: "paragraph"
+          Dot: "."

@@ -3,18 +3,15 @@ source: src/parser.rs
 expression: output
 ---
 Bold
-  Error: "*" (unclosed delimiter)
+  Asterisk: "*"
   TextChunk
     Word: "a"
     WhiteSpace: " "
     Word: "bold"
     WhiteSpace: " "
+    Error: "\n" (unexpected LineEnding)
+    WhiteSpace: " "
     Word: "text"
     WhiteSpace: " "
     Word: "chunk"
-    WhiteSpace: " "
-    Word: "blah"
-    WhiteSpace: " "
-    Word: "blah"
-    WhiteSpace: " "
-    Word: "blah"
+  Asterisk: "*"
