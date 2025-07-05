@@ -98,7 +98,7 @@ pub const PUNCTUATIONS: SyntaxSet = syntax_set!(
 /// - &variable& (verbatim)
 /// 
 /// -- NOTE: no `Pipe` here 
-pub const ATACHED_MODIFIERS: SyntaxSet = syntax_set!(
+pub const ATTACHED_MODIFIERS: SyntaxSet = syntax_set!(
     Asterisk,
     Slash,
     Underscore,

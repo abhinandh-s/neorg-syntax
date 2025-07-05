@@ -1,0 +1,22 @@
+---
+source: src/parser.rs
+assertion_line: 749
+expression: output
+---
+Italics
+  Slash: "/"
+  Error: "/" (unexpected /)
+  TextChunk
+    Word: "this"
+    WhiteSpace: " "
+    Word: "is"
+    WhiteSpace: " "
+  Bold
+    Asterisk: "*"
+    TextChunk
+      Word: "bold"
+    Asterisk: "*"
+  TextChunk
+    WhiteSpace: " "
+  Error: "/" (unexpected /)
+  Slash: "/"

@@ -1,0 +1,11 @@
+---
+source: src/parser.rs
+expression: output
+---
+Italics
+  Slash: "/"
+  Error: "/" (unexpected /)
+  TextChunk
+    Word: "this"
+  Error: "/" (unexpected /)
+  Slash: "/"

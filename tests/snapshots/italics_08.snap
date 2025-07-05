@@ -38,7 +38,6 @@ Italics
     WhiteSpace: " "
     Colon: ":"
     RParen: ")"
-  Slash: "/"
-  TextChunk
+    Slash: "/"
     Word: "blah"
   Slash: "/"

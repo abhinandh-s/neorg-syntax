@@ -1,0 +1,14 @@
+---
+source: src/parser.rs
+expression: output
+---
+Heading
+  Asterisk: "*"
+  Asterisk: "*"
+  WhiteSpace: " "
+  ParaSegment
+    Word: "this"
+    WhiteSpace: " "
+    Word: "is"
+    WhiteSpace: " "
+    Word: "h2"

@@ -1,5 +1,7 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused)]
 #![deny(clippy::print_stdout, clippy::print_stderr)]
+
+use std::thread::current;
 
 use crate::node::SyntaxNode;
 use crate::*;
@@ -56,6 +58,11 @@ impl Parser {
     #[track_caller]
     fn assert(&mut self, kind: SyntaxKind) {
         assert_eq!(self.current(), kind);
+    }
+
+    #[track_caller]
+    fn bump(&mut self, kind: SyntaxKind) {
+        assert_eq!(self.current(), kind);
         self.eat();
     }
 
@@ -67,6 +74,10 @@ impl Parser {
         self.tokens.get(self.cursor + 1).map(|f| f.kind())
     }
 
+    fn prev(&self) -> Option<SyntaxKind> {
+        self.tokens.get(self.cursor - 1).map(|f| f.kind())
+    }
+    
     fn eat(&mut self) {
         let node = SyntaxNode::leaf(self.tokens[self.cursor].clone());
         self.nodes.push(node);
@@ -157,77 +168,504 @@ impl Parser {
     }
 }
 
-#[tracing::instrument(skip_all)]
-fn parse_variable(p: &mut Parser) {
-    let m = p.start();
-    p.assert(T!('&'));
-    if p.current() == SyntaxKind::WhiteSpace {
-        p.unexpected();
-    }
-    parse_atmod_text_chunk(p);
+// #[tracing::instrument(skip_all)]
+// fn parse_heading(p: &mut Parser) {
+//     let m = p.start();
+//     while !p.at_set(syntax_set!(Eof, LineEnding)) {
+//         while p.at(T!['*']) {
+//             p.eat();
+//         }
+//         p.expect(T![WhiteSpace]);
+//         parse_para_segment(p);
+//     }
+//     p.wrap(m, SyntaxKind::Heading);
+// }
+//
+// assert_tree!(heading_01, parse_heading, "* this is h1");
+// assert_tree!(heading_02, parse_heading, "** this is h2");
+// assert_tree!(heading_03, parse_heading, "*** this is h3");
+// assert_tree!(heading_04, parse_heading, "**** this is h4");
+// assert_tree!(heading_05, parse_heading, "***** this is h5");
+// assert_tree!(heading_06, parse_heading, "****** this is h6");
+// assert_tree!(heading_07, parse_heading, "******* this is h6");
+// // assert_tree!(heading_08, parse_heading, "****** this is h6 and /italic/");
+//
+// #[tracing::instrument(skip_all)]
+// fn parse_variable(p: &mut Parser) {
+//     let m = p.start();
+//     p.bump(T!('&'));
+//     if p.current() == T![WhiteSpace] {
+//         p.unexpected();
+//     }
+//     parse_atmod_text_chunk(p);
+//
+//     p.expect_closing_delimiter(m, T!['&']);
+//     p.wrap(m, SyntaxKind::Variable);
+// }
+//
+// #[tracing::instrument(skip_all)]
+// fn parse_inline_maths(p: &mut Parser) {
+//     let m = p.start();
+//     p.bump(T!('$'));
+//     if p.current() == SyntaxKind::WhiteSpace {
+//         p.unexpected();
+//     }
+//     parse_atmod_text_chunk(p);
+//
+//     p.expect_closing_delimiter(m, T!('$'));
+//     p.wrap(m, SyntaxKind::InlineMath);
+// }
+//
+// #[tracing::instrument(skip_all)]
+// fn parse_inline_code(p: &mut Parser) {
+//     let m = p.start();
+//     p.bump(T!('`'));
+//     if p.current() == SyntaxKind::WhiteSpace {
+//         p.unexpected();
+//     }
+//     parse_atmod_text_chunk(p);
+//
+//     p.expect_closing_delimiter(m, T!('`'));
+//     p.wrap(m, SyntaxKind::InlineCode);
+// }
+//
+// #[tracing::instrument(skip_all)]
+// fn parse_subscript(p: &mut Parser) {
+//     let m = p.start();
+//     p.bump(T!(','));
+//     if p.current() == SyntaxKind::WhiteSpace {
+//         p.unexpected();
+//     }
+//     parse_atmod_text_chunk(p);
+//
+//     p.expect_closing_delimiter(m, T!(','));
+//     p.wrap(m, SyntaxKind::Subscript);
+// }
+//
+// #[tracing::instrument(skip_all)]
+// fn parse_superscript(p: &mut Parser) {
+//     let m = p.start();
+//     p.bump(T!['^']);
+//     if p.current() == SyntaxKind::WhiteSpace {
+//         p.unexpected();
+//     }
+//     parse_atmod_text_chunk(p);
+//
+//     p.expect_closing_delimiter(m, T!('^'));
+//     p.wrap(m, SyntaxKind::Superscript);
+// }
+//
+// define_attached_modifier!(parse_bold, Asterisk, Bold);
+// define_attached_modifier!(parse_underline, Underscore, UnderLine);
+// define_attached_modifier!(parse_strike_through, Hyphen, StrikeThrough);
+// define_attached_modifier!(parse_spoiler, Exclamation, Spoiler);
+// define_attached_modifier!(parse_null_modifier, Percent, NullModifier);
+// define_attached_modifier!(parse_italics, Slash, Italics);
 
-    p.expect_closing_delimiter(m, T!('&'));
-    p.wrap(m, SyntaxKind::Variable);
+// #[macro_export]
+// macro_rules! define_attached_modifier {
+//     ($fn_name:ident, $kind:ident, $wrapin:ident) => {
+//         #[tracing::instrument(skip_all)]
+//         fn $fn_name(p: &mut Parser) {
+//             let m = p.start();
+//             p.bump(SyntaxKind::$kind);
+//             if p.current() == SyntaxKind::WhiteSpace {
+//                 p.unexpected();
+//             }
+//             time_bound_while!(!p.at_set(syntax_set!(Eof)), {
+//                 if p.at_set(ATTACHED_MODIFIERS.add(SyntaxKind::Pipe)) {
+//                     if p.at(SyntaxKind::$kind) && (p.next() == Some(SyntaxKind::Word)) {
+//                         p.eat();
+//                         continue;
+//                     } else if p.at(SyntaxKind::$kind) && (p.next() == Some(SyntaxKind::WhiteSpace))
+//                     {
+//                         break;
+//                     }
+//                     parse_attached_modifiers(p);
+//                 } else {
+//                     parse_atmod_text_chunk(p);
+//                 }
+//             });
+//
+//             assert!(
+//                 p.at(SyntaxKind::$kind) && (p.next() == Some(SyntaxKind::Word))
+//                     || p.at_set(ATTACHED_MODIFIERS.add(SyntaxKind::Eof))
+//             );
+//             p.expect_closing_delimiter(m, SyntaxKind::$kind);
+//             p.wrap(m, SyntaxKind::$wrapin);
+//         }
+//     };
+// }
+
+// /// # Deals with:
+// ///
+// /// - normal TextChunk
+// /// - inline TextChunk
+// /// - inline elements
+// ///
+// ///
+// /// # Paragraph Break
+// ///
+// /// A paragraph break is defined as an _empty line_. In the simplest case that means two consecutive
+// /// `line endings` but since Neorg is a /free-form/ markup language, a line which only contains
+// /// whitespace is also considered empty.
+// #[tracing::instrument(skip_all)]
+// pub fn parse_paragraph(p: &mut Parser) {
+//     let m = p.start();
+
+//     time_bound_while!(!p.at(SyntaxKind::Eof), {
+//         // a paragraph segment stops at `LineEnding`.
+//         // ie, after a loop if p is at `LineEnding` or `WhiteSpace`
+//         if let Some(k) = p.next() {
+//             if p.at(SyntaxKind::LineEnding) {
+//                 let m = p.start();
+//                 p.eat();
+//                 p.wrap(m, SyntaxKind::ParaBreak);
+//             } else if p.at(SyntaxKind::WhiteSpace) && k == SyntaxKind::LineEnding {
+//                 let m = p.start();
+//                 p.eat();
+//                 p.eat();
+//                 p.wrap(m, SyntaxKind::ParaBreak);
+//             } else {
+//                 // still p is at WhiteSpace
+//                 parse_para_segment(p);
+//             }
+//         }
+//     });
+//     p.wrap(m, SyntaxKind::Paragraph);
+// }
+//
+// /// # Verbatim Paragraph Segments
+// ///
+// /// These are structurally equivalent to regular `paragraph segments` with a single exception.
+// /// Verbatim paragraph segments are built up from _only_ `words`. This means that attached
+// /// modifiers and linkables are simply parsed as raw text within a verbatim paragraph segment.
+// #[tracing::instrument(skip_all)]
+// fn parse_verbatim(p: &mut Parser) {
+//     let m = p.start();
+//     p.bump(T!('|'));
+//
+//     parse_verbatim_chunk(p);
+//
+//     p.expect_closing_delimiter(m, T!('|'));
+//     p.wrap(m, SyntaxKind::Verbatim);
+// }
+//
+// #[tracing::instrument(skip_all)]
+// fn parse_verbatim_chunk(p: &mut Parser) {
+//     let m = p.start();
+//     let set = syntax_set!(Pipe, Eof);
+//     while !p.at_set(set) {
+//         p.eat();
+//     }
+//     p.wrap(m, SyntaxKind::TextChunk);
+// }
+//
+// #[tracing::instrument(skip_all)]
+// fn parse_nm_text_chunk(p: &mut Parser) {
+//     let m = p.start();
+//
+//     while p.at_set(syntax_set!(Word, WhiteSpace, Dot)) {
+//         p.eat();
+//     }
+//     p.wrap(m, SyntaxKind::TextChunk);
+// }
+
+/// If an Operation in this while loop took more than 1 second it will panic
+#[macro_export]
+macro_rules! time_bound_while {
+    ($cond:expr, $body:block) => {{
+        #[cfg(debug_assertions)]
+        {
+            let start = std::time::Instant::now();
+            while $cond {
+                if start.elapsed() >= std::time::Duration::from_secs(1) {
+                    panic!("Operation took more than 1 sec, possible infinite loop.");
+                }
+                $body
+            }
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            while $cond {
+                $body
+            }
+        }
+    }};
 }
 
-#[tracing::instrument(skip_all)]
-fn parse_inline_maths(p: &mut Parser) {
-    let m = p.start();
-    p.assert(T!('$'));
-    if p.current() == SyntaxKind::WhiteSpace {
-        p.unexpected();
-    }
-    parse_atmod_text_chunk(p);
+// #[tracing::instrument(skip_all)]
+// fn parse_atmod_text(p: &mut Parser, stop_at: SyntaxSet) {
+//     let m = p.start();
+//
+//     while !p.at_set(stop_at.add(SyntaxKind::Eof)) {
+//         if p.at(SyntaxKind::LineEnding) {
+//             p.unexpected();
+//         }
+//         p.eat();
+//     }
+//
+//     if p.at_set(ATTACHED_MODIFIERS) {
+//         if let Some(n) = p.nodes.last_mut() {
+//             if n.kind() == SyntaxKind::WhiteSpace {
+//                 n.unexpected();
+//             }
+//         }
+//     }
+//
+//     p.wrap(m, SyntaxKind::TextChunk);
+// }
+//
+// #[tracing::instrument(skip_all)]
+// fn parse_atmod_text_chunk(p: &mut Parser) {
+//     let m = p.start();
+//     let set = ATTACHED_MODIFIERS.add(SyntaxKind::Pipe);
+//
+//     while !p.at_set(set.add(SyntaxKind::Eof)) {
+//         if p.at(SyntaxKind::LineEnding) {
+//             //           p.balanced = false;
+//             p.unexpected();
+//         }
+//         p.eat();
+//     }
+//
+//     if p.at_set(ATTACHED_MODIFIERS) {
+//         //  if p.balanced {
+//         if let Some(n) = p.nodes.last_mut() {
+//             if n.kind() == SyntaxKind::WhiteSpace {
+//                 n.unexpected();
+//             }
+//         }
+//     }
+//     // } else {
+//     //     p.balanced = true
+//     // }
+//     p.wrap(m, SyntaxKind::TextChunk);
+// }
+// # Paragraph Segments
+//
+// `Words` are first combined into *paragraph segments*. A paragraph segment
+// may then contain any inline element of type:
+//
+// - attached modifiers
+// - linkables
+//
+// Usually, a [`line ending`] terminates the paragraph segment.
+// This means that a paragraph segment is simply a line of text:
+//
+// # example
+//
+// I am a paragraph segment.
+// I am another paragraph segment.
+// Together we form a paragraph.
+//
+// #[tracing::instrument(skip_all)]
+// fn parse_para_segment(p: &mut Parser) {
+//     let m = p.start();
+//
+//     time_bound_while!(!p.at_set(syntax_set!(LineEnding, Eof)), {
+//         if p.at_set(ATTACHED_MODIFIERS.add(SyntaxKind::Pipe)) {
+//             parse_attached_modifiers(p);
+//         } else {
+//             let amod_stoper = ATTACHED_MODIFIERS
+//                 .add(SyntaxKind::Pipe)
+//                 .add(SyntaxKind::LineEnding)
+//                 .add(SyntaxKind::Eof);
+//             while !p.at_set(amod_stoper) {
+//                 p.eat();
+//             }
+//         }
+//     });
+//     p.expect(SyntaxKind::LineEnding);
+//     p.wrap(m, SyntaxKind::ParaSegment);
+// }
+//
+// assert_tree!(
+//     long_para_segment_01,
+//     parse_para_segment,
+//     "this is a *bold* /italic/ _underline_   -strike-through- !spoiler! ^superscript^ ,subscript, `inline code` %null modifier% &variable& "
+// );
 
-    p.expect_closing_delimiter(m, T!('$'));
-    p.wrap(m, SyntaxKind::InlineMath);
+/// Their name should be rather self-explanatory - both the opening and closing modifier
+/// are _attached_ to one another.
+///
+/// The following attached modifiers exist and have respective meaning:
+///
+/// - *bold*      - 1
+/// - /italic/      - 2
+/// - _underline_ - 3
+/// - -strike-through- - 4
+/// - !spoiler! - 5
+/// - ^superscript^ (cannot be nested into `subscript`) - 6
+/// - ,subscript, (cannot be nested into `superscript`) -7
+/// - `inline code` (disables any nested markup - verbatim) -8
+/// - `%null modifier%` -9
+/// - $f(x) = y$ (verbatim) -10
+/// - &variable& (verbatim) -11
+fn parse_attached_modifiers(p: &mut Parser) {
+    dbg!("from parse_attached_modifiers:", p.current());
+    match p.current() {
+        SyntaxKind::Asterisk => parse_bold(p),         // 1
+        SyntaxKind::Slash => parse_italics(p),         // 2
+        SyntaxKind::Underscore => parse_underline(p),  // 3
+        SyntaxKind::Exclamation => parse_spoiler(p),   // 4
+        SyntaxKind::Caret => parse_superscript(p),     // 5
+        SyntaxKind::Comma => parse_subscript(p),       // 6
+        SyntaxKind::Backtick => parse_inline_code(p),  // 7
+        SyntaxKind::Percent => parse_null_modifier(p), // 8
+        SyntaxKind::Dollar => parse_inline_maths(p),   // 9
+        SyntaxKind::Ampersand => parse_variable(p),    // 10
+        SyntaxKind::Hyphen => parse_strike_through(p), // 12
+        SyntaxKind::Pipe => parse_verbatim(p),         // 11
+        _ => parse_atmod_text_chunk(p),
+    }
 }
 
-#[tracing::instrument(skip_all)]
 fn parse_inline_code(p: &mut Parser) {
-    let m = p.start();
-    p.assert(T!('`'));
-    if p.current() == SyntaxKind::WhiteSpace {
-        p.unexpected();
-    }
-    parse_atmod_text_chunk(p);
-
-    p.expect_closing_delimiter(m, T!('`'));
-    p.wrap(m, SyntaxKind::InlineCode);
+    todo!()
 }
 
-#[tracing::instrument(skip_all)]
+fn parse_null_modifier(p: &mut Parser) {
+    todo!()
+}
+
+fn parse_inline_maths(p: &mut Parser) {
+    todo!()
+}
+
+fn parse_variable(p: &mut Parser) {
+    todo!()
+}
+
+fn parse_strike_through(p: &mut Parser) {
+    todo!()
+}
+
+fn parse_verbatim(p: &mut Parser) {
+    let m = p.start();
+    p.bump(T![Pipe]);
+    if p.at(T![Pipe]) {
+        p.unexpected();
+    }
+
+    let text = p.start();
+    time_bound_while!(
+        !p.at_set(SyntaxSet::new().add(SyntaxKind::Eof).add(SyntaxKind::Pipe)),
+        {
+
+            p.eat();
+        }
+    );
+    p.wrap(text, SyntaxKind::TextChunk);
+
+    p.expect_closing_delimiter(m, T![Pipe]);
+    p.wrap(m, SyntaxKind::Verbatim);
+}
+
 fn parse_subscript(p: &mut Parser) {
-    let m = p.start();
-    p.assert(T!(','));
-    if p.current() == SyntaxKind::WhiteSpace {
-        p.unexpected();
-    }
-    parse_atmod_text_chunk(p);
-
-    p.expect_closing_delimiter(m, T!(','));
-    p.wrap(m, SyntaxKind::Subscript);
+    todo!()
 }
 
-#[tracing::instrument(skip_all)]
 fn parse_superscript(p: &mut Parser) {
-    let m = p.start();
-    p.assert(T!('^'));
-    if p.current() == SyntaxKind::WhiteSpace {
-        p.unexpected();
-    }
-    parse_atmod_text_chunk(p);
-
-    p.expect_closing_delimiter(m, T!('^'));
-    p.wrap(m, SyntaxKind::Superscript);
+    todo!()
 }
 
-define_attached_modifier!(parse_bold, Asterisk, Bold);
-define_attached_modifier!(parse_underline, Underscore, UnderLine);
-define_attached_modifier!(parse_strike_through, Hyphen, StrikeThrough);
-define_attached_modifier!(parse_spoiler, Exclamation, Spoiler);
-define_attached_modifier!(parse_null_modifier, Percent, NullModifier);
-define_attached_modifier!(parse_italics, Slash, Italics);
+fn parse_spoiler(p: &mut Parser) {
+    todo!()
+}
+
+fn parse_underline(p: &mut Parser) {
+    todo!()
+}
+
+fn parse_italics(p: &mut Parser) {
+    let m = p.start();
+    p.bump(T!['/']);
+    if p.at(T![Slash]) {
+        p.unexpected();
+    }
+    if p.at(T![WhiteSpace]) {
+        p.unexpected();
+    }
+
+    time_bound_while!(!p.at(T![Eof]), {
+        if p.at(T![Slash]) {
+            if p.next()
+                .filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k))
+                .is_some()
+            {
+                break;
+            } else {
+                p.unexpected();
+                continue;
+            }
+        } else {
+            parse_attached_modifiers(p);
+        }
+    });
+    p.expect_closing_delimiter(m, T!['/']);
+    p.wrap(m, SyntaxKind::Italics);
+}
+
+fn parse_bold(p: &mut Parser) {
+    let m = p.start();
+    let kind = T![Asterisk];
+    p.bump(kind);
+    if p.at(kind) {
+        p.unexpected();
+    }
+    if p.at(T![WhiteSpace]) {
+        p.unexpected();
+    }
+
+    time_bound_while!(!p.at(T![Eof]), {
+        if p.at(kind) {
+            if p.next()
+                .filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k))
+                .is_some()
+            {
+                break;
+            } else {
+                p.unexpected();
+                continue;
+            }
+        } else {
+            parse_attached_modifiers(p);
+        }
+    });
+    p.expect_closing_delimiter(m, kind);
+    p.wrap(m, SyntaxKind::Bold);
+}
+
+fn parse_atmod_text_chunk(p: &mut Parser) {
+    let m = p.start();
+    while !p.at(SyntaxKind::Eof) {
+        if p.at(SyntaxKind::LineEnding) {
+            p.unexpected();
+        } else if p.at_set(ATTACHED_MODIFIERS.add(SyntaxKind::Pipe)) {
+            if p.prev().filter(|k| *k == SyntaxKind::WhiteSpace).is_some() {
+                break;
+            }
+            else if p.next().filter(|k| *k == SyntaxKind::Word).is_some() {
+                p.eat();
+                continue;
+            } else {
+                break;
+            }
+        } else {
+            p.eat();
+        }
+    }
+    if p.at_set(ATTACHED_MODIFIERS) && p.next().filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k)).is_some() {
+        if let Some(n) = p.nodes.last_mut() {
+            if n.kind() == SyntaxKind::WhiteSpace {
+                n.unexpected();
+            }
+        }
+    }
+
+    p.wrap(m, SyntaxKind::TextChunk);
+}
 
 assert_tree!(
     // [case:1/9] perfect bold
@@ -291,6 +729,7 @@ assert_tree!(
     parse_italics,
     "/an italics text chunk and it have a | verbatim | chunk in it :)/blah/ blah blah"
 );
+
 assert_tree!(
     // [case:9/9] not so perfect italics
     // feat: /this/ is not fully italics/ - cuz space after `/`
@@ -299,318 +738,26 @@ assert_tree!(
     "/an italics text chunk and it have a | verbatim | chunk in it :)/ blah/ blah blah"
 );
 
-#[macro_export]
-macro_rules! define_attached_modifier {
-    ($fn_name:ident, $kind:ident, $wrapin:ident) => {
-        #[tracing::instrument(skip_all)]
-        fn $fn_name(p: &mut Parser) {
-            let m = p.start();
-            p.assert(SyntaxKind::$kind);
-            if p.current() == SyntaxKind::WhiteSpace {
-                p.unexpected();
-            }
-            time_bound_while!(!p.at_set(syntax_set!(Eof)), {
-                if p.at_set(ATACHED_MODIFIERS.add(SyntaxKind::Pipe)) {
-                    if p.at(SyntaxKind::$kind) && (p.next() == Some(SyntaxKind::Word)) {
-                        p.eat();
-                        continue;
-                    } else if p.at(SyntaxKind::$kind) && (p.next() == Some(SyntaxKind::WhiteSpace))
-                    {
-                        break;
-                    }
-                    parse_attached_modifiers(p);
-                } else {
-                    parse_atmod_text_chunk(p);
-                }
-            });
-
-            assert!(
-                p.at(SyntaxKind::$kind) && (p.next() == Some(SyntaxKind::Word))
-                    || p.at_set(ATACHED_MODIFIERS.add(SyntaxKind::Eof))
-            );
-            p.expect_closing_delimiter(m, SyntaxKind::$kind);
-            p.wrap(m, SyntaxKind::$wrapin);
-        }
-    };
-}
-
 assert_tree!(
-    // [case:1/7] perfect bold
-    bold_01,
-    parse_bold,
-    "*a bold text chunk* blah blah blah"
+    // [case:9/9] not so perfect italics
+    // feat: /this/ is not fully italics/ - cuz space after `/`
+    italics_10,
+    parse_italics,
+    "//this//"
 );
 
 assert_tree!(
-    // [case:2/7] not so perfect bold
-    // error: Unclosed delimiter
-    bold_02,
-    parse_bold,
-    "*a bold text chunk blah blah blah"
+    // [case:9/9] not so perfect italics
+    // feat: /this/ is not fully italics/ - cuz space after `/`
+    italics_11,
+    parse_italics,
+    "//this is *bold* //"
 );
 
-assert_tree!(
-    // [case:3/7] not so perfect bold
-    // error: WhiteSpace at beginning
-    bold_03,
-    parse_bold,
-    "* a bold text chunk* blah blah blah"
-);
 
-assert_tree!(
-    // [case:4/7] not so perfect bold
-    // error: WhiteSpace at end
-    bold_04,
-    parse_bold,
-    "*a bold text chunk * blah blah blah"
-);
-
-assert_tree!(
-    // [case:5/7] not so perfect bold
-    // error: WhiteSpace at both end
-    bold_05,
-    parse_bold,
-    "* a bold text chunk * blah blah blah"
-);
-
-assert_tree!(
-    // [case:6/7] not so perfect bold
-    // error: `LineEnding` inside text chunk
-    bold_06,
-    parse_bold,
-    "*a bold \n text chunk* blah blah blah"
-);
-
-assert_tree!(
-    // [case:7/7] not so perfect bold
-    // feat: other inline elements inside this ATACHED_MODIFIERS
-    bold_07,
-    parse_bold,
-    "*a bold text chunk and it have a | verbatim | chunk in it :)* blah blah blah"
-);
-
-/// # Deals with:
-///
-/// - normal TextChunk
-/// - inline TextChunk
-/// - inline elements
-///
-///
-/// # Paragraph Break
-///
-/// A paragraph break is defined as an _empty line_. In the simplest case that means two consecutive
-/// `line endings` but since Neorg is a /free-form/ markup language, a line which only contains
-/// whitespace is also considered empty.
-#[tracing::instrument(skip_all)]
-pub fn parse_paragraph(p: &mut Parser) {
-    let m = p.start();
-
-    time_bound_while!(!p.at(SyntaxKind::Eof), {
-        // a paragraph segment stops at `LineEnding`.
-        // ie, after a loop if p is at `LineEnding` or `WhiteSpace`
-        if let Some(k) = p.next() {
-            if p.at(SyntaxKind::LineEnding) {
-                let m = p.start();
-                p.eat();
-                p.wrap(m, SyntaxKind::ParaBreak);
-            } else if p.at(SyntaxKind::WhiteSpace) && k == SyntaxKind::LineEnding {
-                let m = p.start();
-                p.eat();
-                p.eat();
-                p.wrap(m, SyntaxKind::ParaBreak);
-            } else {
-                // still p is at WhiteSpace
-                parse_para_segment(p);
-            }
-        }
-    });
-    p.wrap(m, SyntaxKind::Paragraph);
-}
-
-/// # Verbatim Paragraph Segments
-///  
-/// These are structurally equivalent to regular `paragraph segments` with a single exception.
-/// Verbatim paragraph segments are built up from _only_ `words`. This means that attached
-/// modifiers and linkables are simply parsed as raw text within a verbatim paragraph segment.
-#[tracing::instrument(skip_all)]
-fn parse_verbatim(p: &mut Parser) {
-    let m = p.start();
-    p.assert(T!('|'));
-
-    parse_verbatim_chunk(p);
-
-    p.expect_closing_delimiter(m, T!('|'));
-    p.wrap(m, SyntaxKind::Verbatim);
-}
 
 #[tracing::instrument(skip_all)]
-fn parse_verbatim_chunk(p: &mut Parser) {
-    let m = p.start();
-    let set = syntax_set!(Pipe, Eof);
-    while !p.at_set(set) {
-        p.eat();
-    }
-    p.wrap(m, SyntaxKind::TextChunk);
-}
-
-#[tracing::instrument(skip_all)]
-fn parse_nm_text_chunk(p: &mut Parser) {
-    let m = p.start();
-
-    while p.at_set(syntax_set!(Word, WhiteSpace, Dot)) {
-        p.eat();
-    }
-    p.wrap(m, SyntaxKind::TextChunk);
-}
-
-/// If an Operation in this while loop took more than 1 second it will panic
-#[macro_export]
-macro_rules! time_bound_while {
-    ($cond:expr, $body:block) => {{
-        #[cfg(debug_assertions)]
-        {
-            let start = std::time::Instant::now();
-            while $cond {
-                if start.elapsed() >= std::time::Duration::from_secs(1) {
-                    panic!("Operation took more than 1 sec, possible infinite loop.");
-                }
-                $body
-            }
-        }
-        #[cfg(not(debug_assertions))]
-        {
-            while $cond {
-                $body
-            }
-        }
-    }};
-}
-
-#[tracing::instrument(skip_all)]
-fn parse_atmod_text(p: &mut Parser, stop_at: SyntaxSet) {
-    let m = p.start();
-
-    while !p.at_set(stop_at.add(SyntaxKind::Eof)) {
-        if p.at(SyntaxKind::LineEnding) {
-            p.unexpected();
-        }
-        p.eat();
-    }
-
-    if p.at_set(ATACHED_MODIFIERS) {
-        if let Some(n) = p.nodes.last_mut() {
-            if n.kind() == SyntaxKind::WhiteSpace {
-                n.unexpected();
-            }
-        }
-    }
-
-    p.wrap(m, SyntaxKind::TextChunk);
-}
-
-#[tracing::instrument(skip_all)]
-fn parse_atmod_text_chunk(p: &mut Parser) {
-    let m = p.start();
-    let set = ATACHED_MODIFIERS.add(SyntaxKind::Pipe);
-
-    while !p.at_set(set.add(SyntaxKind::Eof)) {
-        if p.at(SyntaxKind::LineEnding) {
-            //           p.balanced = false;
-            p.unexpected();
-        }
-        p.eat();
-    }
-
-    if p.at_set(ATACHED_MODIFIERS) {
-        //  if p.balanced {
-        if let Some(n) = p.nodes.last_mut() {
-            if n.kind() == SyntaxKind::WhiteSpace {
-                n.unexpected();
-            }
-        }
-    }
-    // } else {
-    //     p.balanced = true
-    // }
-    p.wrap(m, SyntaxKind::TextChunk);
-}
-/// # Paragraph Segments
-///
-/// `Words` are first combined into *paragraph segments*. A paragraph segment
-/// may then contain any inline element of type:
-///
-/// - attached modifiers
-/// - linkables
-///
-/// Usually, a [`line ending`] terminates the paragraph segment.
-/// This means that a paragraph segment is simply a line of text:
-///
-/// # example
-///
-/// I am a paragraph segment.
-/// I am another paragraph segment.
-/// Together we form a paragraph.
-///
-#[tracing::instrument(skip_all)]
-fn parse_para_segment(p: &mut Parser) {
-    let m = p.start();
-
-    time_bound_while!(!p.at_set(syntax_set!(LineEnding, Eof)), {
-        if p.at_set(ATACHED_MODIFIERS.add(SyntaxKind::Pipe)) {
-            parse_attached_modifiers(p);
-        } else {
-            let amod_stoper = ATACHED_MODIFIERS
-                .add(SyntaxKind::Pipe)
-                .add(SyntaxKind::LineEnding)
-                .add(SyntaxKind::Eof);
-            while !p.at_set(amod_stoper) {
-                p.eat();
-            }
-        }
-    });
-    p.expect(SyntaxKind::LineEnding);
-    p.wrap(m, SyntaxKind::ParaSegment);
-}
-
-assert_tree!(
-    long_para_segment_01,
-    parse_para_segment,
-    "this is a *bold* /italic/ _underline_   -strike-through- !spoiler! ^superscript^ ,subscript, `inline code` %null modifier% &variable& "
-);
-
-/// Their name should be rather self-explanatory - both the opening and closing modifier
-/// are _attached_ to one another.
-///
-/// The following attached modifiers exist and have respective meaning:
-/// - *bold*
-/// - /italic/
-/// - _underline_
-/// - -strike-through-
-/// - !spoiler!
-/// - ^superscript^ (cannot be nested into `subscript`)
-/// - ,subscript, (cannot be nested into `superscript`)
-/// - `inline code` (disables any nested markup - verbatim)
-/// - `%null modifier%`
-/// - $f(x) = y$ (verbatim)
-/// - &variable& (verbatim)
-fn parse_attached_modifiers(p: &mut Parser) {
-    dbg!("from parse_attached_modifiers:", p.current());
-    match p.current() {
-        SyntaxKind::Asterisk => parse_bold(p),
-        SyntaxKind::Slash => parse_italics(p),
-        SyntaxKind::Underscore => parse_underline(p),
-        SyntaxKind::Exclamation => parse_spoiler(p),
-        SyntaxKind::Caret => parse_superscript(p),
-        SyntaxKind::Comma => parse_subscript(p),
-        SyntaxKind::Backtick => parse_inline_code(p),
-        SyntaxKind::Percent => parse_null_modifier(p),
-        SyntaxKind::Dollar => parse_inline_maths(p),
-        SyntaxKind::Ampersand => parse_variable(p),
-        SyntaxKind::Pipe => parse_verbatim(p),
-        SyntaxKind::Hyphen => parse_strike_through(p),
-        _ => panic!("unimplemented inline!"),
-    }
-}
+fn parse_atmod(p: &mut Parser) {}
 
 #[macro_export]
 macro_rules! assert_tree {
@@ -639,146 +786,146 @@ macro_rules! assert_tree {
     };
 }
 
-#[cfg(test)]
-mod test {
-    assert_tree!(verbatim_05, parse_verbatim, "|this is a test");
-    assert_tree!(verbatim_01, parse_verbatim, "|this is a test|");
-    assert_tree!(verbatim_02, parse_verbatim, "| this is a test |");
-    assert_tree!(
-        verbatim_03,
-        parse_verbatim,
-        r###"|~ this is a test !"#$%&'()*+,-./:;<=>?@[]^_`{}~\thre|"###
-    );
-    assert_tree!(verbatim_04, parse_verbatim, r###"|~ `{}~\thre|"###);
-    assert_tree!(text_chunk_01, parse_atmod_text_chunk, "this is text chunk");
-    assert_tree!(
-        text_chunk_01_err,
-        parse_atmod_text_chunk,
-        "this is text chunk / not this"
-    );
-    assert_tree!(
-        para_segment_01,
-        parse_para_segment,
-        "this is |a verbatim text chunk|"
-    );
-    assert_tree!(
-        para_segment_01_err,
-        parse_para_segment,
-        "this is |a verbatim text chunk"
-    );
-    assert_tree!(
-        para_segment_02_err,
-        parse_para_segment,
-        "this is |a verbatim text chunk|\nthis is next"
-    );
-    assert_tree!(
-        para_segment_03_err,
-        parse_para_segment,
-        "this isrbatim text chunk\nthis is next"
-    );
-    assert_tree!(
-        paragraph_01,
-        parse_paragraph,
-        "this isrbatim text chunk\nthis is next"
-    );
-    assert_tree!(
-        paragraph_02,
-        parse_paragraph,
-        r#"I am a paragraph segment
-I am another paragraph segment
- Together we form a paragraph"#
-    );
-    assert_tree!(
-        paragraph_03,
-        parse_paragraph,
-        r#"I am a paragraph segment.
-I am another paragraph segment.
-    Together we form a paragraph."#
-    );
-    assert_tree!(
-        paragraph_with_verbatim_01,
-        parse_paragraph,
-        r#"I am a paragraph segment.
-I am another paragraph segment.
-this |is verbatim| content
-    Together we form a paragraph."#
-    );
-    assert_tree!(
-        paragraph_with_verbatim_emph_01,
-        parse_paragraph,
-        r#"I am a paragraph segment.
-I am another paragraph segment.
-this |is verbatim| content *this is bold*
-    Together we form a paragraph."#
-    );
-
-    // ParaBreak
-    //
-    // [case:1/2]
-    //
-    // `LineEnding` after a `LineEnding`
-    assert_tree!(
-        parabreak_01,
-        parse_paragraph,
-        r#" I am a paragraph segment.
-I am another paragraph segment.
-
-this |is verbatim| content *this is bold*
-    Together we form a paragraph."#
-    );
-
-    // ParaBreak
-    //
-    // [case:2/2]
-    //
-    // empty line with many `WhiteSpace` followed by `LineEnding`
-    assert_tree!(
-        parabreak_02,
-        parse_paragraph,
-        r#" I am a paragraph segment.
-I am another paragraph segment.
-      
-this |is verbatim| content *this is bold*
-    Together we form a paragraph."#
-    );
-    assert_tree!(
-        parse_02,
-        parse_paragraph,
-        r#" I am a paragraph segment.
-
-I am another paragraph segment.
- are _attached_ to one another.
-([{}])
-  *bold*
-  /italic/
-  _underline_
-  |-strike-through-|
-  !spoiler!
-  ^superscript^
-  ,subscript,
-  `inline code`
-  `%null modifier%`
-  &variable& 
-this |is verbatim| content *this is bold*
-    Together we form a paragraph."#
-    );
-
-    quickcheck::quickcheck! {
-        #[test]
-        #[ignore]
-        fn no_panic_on_random_input(input: String) -> bool {
-            let mut parser = crate::Parser::new(&input);
-            crate::parse_paragraph(&mut parser);
-            true // test passes if no panic
-        }
-    }
-
-    proptest::proptest! {
-        #[test]
-        #[ignore]
-        fn no_panic_prop(input in ".*") {
-            let mut parser = crate::Parser::new(&input);
-            crate::parse_paragraph(&mut parser);
-        }
-    }
-}
+// #[cfg(test)]
+// mod test {
+//     assert_tree!(verbatim_05, parse_verbatim, "|this is a test");
+//     assert_tree!(verbatim_01, parse_verbatim, "|this is a test|");
+//     assert_tree!(verbatim_02, parse_verbatim, "| this is a test |");
+//     assert_tree!(
+//         verbatim_03,
+//         parse_verbatim,
+//         r###"|~ this is a test !"#$%&'()*+,-./:;<=>?@[]^_`{}~\thre|"###
+//     );
+//     assert_tree!(verbatim_04, parse_verbatim, r###"|~ `{}~\thre|"###);
+//     assert_tree!(text_chunk_01, parse_atmod_text_chunk, "this is text chunk");
+//     assert_tree!(
+//         text_chunk_01_err,
+//         parse_atmod_text_chunk,
+//         "this is text chunk / not this"
+//     );
+//     assert_tree!(
+//         para_segment_01,
+//         parse_para_segment,
+//         "this is |a verbatim text chunk|"
+//     );
+//     assert_tree!(
+//         para_segment_01_err,
+//         parse_para_segment,
+//         "this is |a verbatim text chunk"
+//     );
+//     assert_tree!(
+//         para_segment_02_err,
+//         parse_para_segment,
+//         "this is |a verbatim text chunk|\nthis is next"
+//     );
+//     assert_tree!(
+//         para_segment_03_err,
+//         parse_para_segment,
+//         "this isrbatim text chunk\nthis is next"
+//     );
+//     assert_tree!(
+//         paragraph_01,
+//         parse_paragraph,
+//         "this isrbatim text chunk\nthis is next"
+//     );
+//     assert_tree!(
+//         paragraph_02,
+//         parse_paragraph,
+//         r#"I am a paragraph segment
+// I am another paragraph segment
+//  Together we form a paragraph"#
+//     );
+//     assert_tree!(
+//         paragraph_03,
+//         parse_paragraph,
+//         r#"I am a paragraph segment.
+// I am another paragraph segment.
+//     Together we form a paragraph."#
+//     );
+//     assert_tree!(
+//         paragraph_with_verbatim_01,
+//         parse_paragraph,
+//         r#"I am a paragraph segment.
+// I am another paragraph segment.
+// this |is verbatim| content
+//     Together we form a paragraph."#
+//     );
+//     assert_tree!(
+//         paragraph_with_verbatim_emph_01,
+//         parse_paragraph,
+//         r#"I am a paragraph segment.
+// I am another paragraph segment.
+// this |is verbatim| content *this is bold*
+//     Together we form a paragraph."#
+//     );
+//
+//     // ParaBreak
+//     //
+//     // [case:1/2]
+//     //
+//     // `LineEnding` after a `LineEnding`
+//     assert_tree!(
+//         parabreak_01,
+//         parse_paragraph,
+//         r#" I am a paragraph segment.
+// I am another paragraph segment.
+//
+// this |is verbatim| content *this is bold*
+//     Together we form a paragraph."#
+//     );
+//
+//     // ParaBreak
+//     //
+//     // [case:2/2]
+//     //
+//     // empty line with many `WhiteSpace` followed by `LineEnding`
+//     assert_tree!(
+//         parabreak_02,
+//         parse_paragraph,
+//         r#" I am a paragraph segment.
+// I am another paragraph segment.
+//
+// this |is verbatim| content *this is bold*
+//     Together we form a paragraph."#
+//     );
+//     assert_tree!(
+//         parse_02,
+//         parse_paragraph,
+//         r#" I am a paragraph segment.
+//
+// I am another paragraph segment.
+//  are _attached_ to one another.
+// ([{}])
+//   *bold*
+//   /italic/
+//   _underline_
+//   |-strike-through-|
+//   !spoiler!
+//   ^superscript^
+//   ,subscript,
+//   `inline code`
+//   `%null modifier%`
+//   &variable&
+// this |is verbatim| content *this is bold*
+//     Together we form a paragraph."#
+//     );
+//
+//     quickcheck::quickcheck! {
+//         #[test]
+//         #[ignore]
+//         fn no_panic_on_random_input(input: String) -> bool {
+//             let mut parser = crate::Parser::new(&input);
+//             crate::parse_paragraph(&mut parser);
+//             true // test passes if no panic
+//         }
+//     }
+//
+//     proptest::proptest! {
+//         #[test]
+//         #[ignore]
+//         fn no_panic_prop(input in ".*") {
+//             let mut parser = crate::Parser::new(&input);
+//             crate::parse_paragraph(&mut parser);
+//         }
+//     }
+// }

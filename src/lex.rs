@@ -383,10 +383,10 @@ macro_rules! define_punct_lexers {
 /// ---
 #[macro_export]
 macro_rules! T {
-    ($ch:tt) => {
+    [$ch:literal] => {
         $crate::char_to_kind($ch)
     };
-    ($expr:expr) => {
+    [$expr:ident] => {
         $crate::SyntaxKind::$expr
     };
 }

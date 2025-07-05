@@ -26,7 +26,7 @@ I am a paragraph segment.
 I am another paragraph segment.
 Together we form a paragraph."###);
 
-    parse_paragraph(&mut p);
+//    parse_paragraph(&mut p);
 
     // print_cst(source);
 
