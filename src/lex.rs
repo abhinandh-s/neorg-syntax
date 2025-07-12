@@ -729,6 +729,28 @@ fn lex_white_space(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
     Some(token!(SyntaxKind::WhiteSpace, text, len))
 }
 
+#[allow(dead_code)]
+const M_DETACHED_MODIFIERS: [char; 12] = [
+        '*',  // Headings
+        '-',  // Unordered Lists
+        '>',  // Quotes
+        '%',  // Attributes
+        '=',
+        '~',  // Ordered Lists
+        '$',  // Definitions
+        '_',
+        '^',  // Footnotes
+        '&',
+        '<',
+        ':',  // Table cells
+];
+
+#[allow(dead_code, unused)]
+fn check_detached(chars: &mut Peekable<Chars<'_>>, expected: SyntaxKind) -> bool {
+    let parsed_chars = 0;
+    false
+}
+
 /// .
 #[derive(Debug)]
 pub struct Spanned<T> {

@@ -48,6 +48,7 @@ pub enum SyntaxKind {
     RCurly,        // `}`
     GreaterThan,   // `>`
     LessThan,      // `<`
+    Quote,         // > this is a quote
     Error,         // `=`
     Italics,       // `/this is Italics/`
     Heading,       // `** this is heading`
@@ -75,6 +76,9 @@ pub enum SyntaxKind {
     NullModifier,
     InlineMath,
     Variable,
+    LinkLocation,
+    LinkDescription,
+    Link,
 }
 
 impl SyntaxKind {

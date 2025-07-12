@@ -1,6 +1,5 @@
 ---
 source: src/parser.rs
-assertion_line: 749
 expression: output
 ---
 Italics

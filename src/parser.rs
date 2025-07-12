@@ -3,6 +3,8 @@
 
 use std::thread::current;
 
+use tracing::span::Attributes;
+
 use crate::node::SyntaxNode;
 use crate::*;
 
@@ -33,6 +35,8 @@ pub struct Parser {
     /// Whether the parser has the expected set of open/close delimiters. This
     /// only ever transitions from `true` to `false`.
     balanced: bool,
+    line: usize,
+    col: usize,
     /// Nodes representing the concrete syntax tree of previously parsed text.
     /// In Code and Math, includes previously parsed trivia, but not `token`.
     nodes: Vec<SyntaxNode>,
@@ -45,8 +49,16 @@ impl Parser {
             tokens,
             cursor: 0,
             balanced: true,
+            line: 0,
+            col: 0,
             nodes: Vec::new(),
         }
+    }
+
+    fn eat_line_ending(&mut self) {
+        self.eat();
+        self.line += 1;
+        self.col = 0;
     }
 
     /// A marker that will point to the current token in the parser once it's
@@ -77,7 +89,7 @@ impl Parser {
     fn prev(&self) -> Option<SyntaxKind> {
         self.tokens.get(self.cursor - 1).map(|f| f.kind())
     }
-    
+
     fn eat(&mut self) {
         let node = SyntaxNode::leaf(self.tokens[self.cursor].clone());
         self.nodes.push(node);
@@ -152,6 +164,10 @@ impl Parser {
 
     fn at_set(&self, set: SyntaxSet) -> bool {
         set.contains(self.current())
+    }
+
+    fn is_at_eof(&self) -> bool {
+        self.current() == T![Eof]
     }
 
     fn wrap(&mut self, m: Marker, kind: SyntaxKind) {
@@ -297,44 +313,6 @@ impl Parser {
 //     };
 // }
 
-// /// # Deals with:
-// ///
-// /// - normal TextChunk
-// /// - inline TextChunk
-// /// - inline elements
-// ///
-// ///
-// /// # Paragraph Break
-// ///
-// /// A paragraph break is defined as an _empty line_. In the simplest case that means two consecutive
-// /// `line endings` but since Neorg is a /free-form/ markup language, a line which only contains
-// /// whitespace is also considered empty.
-// #[tracing::instrument(skip_all)]
-// pub fn parse_paragraph(p: &mut Parser) {
-//     let m = p.start();
-
-//     time_bound_while!(!p.at(SyntaxKind::Eof), {
-//         // a paragraph segment stops at `LineEnding`.
-//         // ie, after a loop if p is at `LineEnding` or `WhiteSpace`
-//         if let Some(k) = p.next() {
-//             if p.at(SyntaxKind::LineEnding) {
-//                 let m = p.start();
-//                 p.eat();
-//                 p.wrap(m, SyntaxKind::ParaBreak);
-//             } else if p.at(SyntaxKind::WhiteSpace) && k == SyntaxKind::LineEnding {
-//                 let m = p.start();
-//                 p.eat();
-//                 p.eat();
-//                 p.wrap(m, SyntaxKind::ParaBreak);
-//             } else {
-//                 // still p is at WhiteSpace
-//                 parse_para_segment(p);
-//             }
-//         }
-//     });
-//     p.wrap(m, SyntaxKind::Paragraph);
-// }
-//
 // /// # Verbatim Paragraph Segments
 // ///
 // /// These are structurally equivalent to regular `paragraph segments` with a single exception.
@@ -552,7 +530,6 @@ fn parse_verbatim(p: &mut Parser) {
     time_bound_while!(
         !p.at_set(SyntaxSet::new().add(SyntaxKind::Eof).add(SyntaxKind::Pipe)),
         {
-
             p.eat();
         }
     );
@@ -560,6 +537,306 @@ fn parse_verbatim(p: &mut Parser) {
 
     p.expect_closing_delimiter(m, T![Pipe]);
     p.wrap(m, SyntaxKind::Verbatim);
+}
+
+// document: $ => repeat1(
+//   choice(
+//     prec(1,
+//       choice(
+//         alias($.paragraph_break, "_paragraph_break"),
+//         alias($.line_break, "_line_break"),
+//         $.heading,
+//         $.nestable_detached_modifier,
+//         $.rangeable_detached_modifier,
+//         $.table,
+//         $.tag,
+//         $.horizontal_line,
+//         $.strong_paragraph_delimiter,
+//       )
+//     ),
+//     $.paragraph,
+//   )
+// ),
+//
+// TODO: heading, nestable_detached_modifier, rangeable_detached_modifier, table, tag,
+// horizontal_line, strong_paragraph_delimiter
+pub fn document(p: &mut Parser) -> SyntaxNode {
+    let m = p.start();
+
+    while !p.is_at_eof() {
+        p.eat_many(syntax_set!(WhiteSpace, Tab));
+
+        match p.current() {
+            T![LineEnding] => {
+                let _ = para_break(p);
+                // we must eat every WhiteSpace and Tab after newline before making any assumptions
+                p.eat_many(syntax_set!(WhiteSpace, Tab));
+            }
+            T![Asterisk] => heading(p),
+            _ => paragraph(p),
+        }
+    }
+    /*
+        paragraph_break(),
+        line_break(),
+        heading(),
+        nestable_detached_modifier(),
+        rangeable_detached_modifier(),
+        table(),
+        tag(),
+        horizontal_line(),
+        strong_paragraph_delimiter(),
+        paragraph(),
+    */
+    p.wrap(m, T![Document]);
+    std::mem::take(&mut p.nodes[0])
+}
+
+// // Any of the following choices are valid IN-LINE elements. Any
+// // multitude of these are combined to form a `paragraph_segment`.
+// _paragraph_element: $ =>
+// choice(
+//   alias($.word, "_word"),
+//   alias($.space, "_space"),
+//   alias($.trailing_modifier, "_trailing_modifier"),
+//   $.link,
+//   $.anchor_declaration,
+//   $.anchor_definition,
+//   $.inline_link_target,
+//   $.escape_sequence,
+//   seq(
+//     optional($.link_modifier),
+//     $.attached_modifier,
+//     optional($.link_modifier),
+//   ),
+//   alias($.link_modifier, "_word"),
+//   alias($._conflict_close, "_word"),
+// ),
+fn paragraph_element(p: &mut Parser) {
+    let c = p.current();
+    match c {
+        SyntaxKind::RParen => (),
+        SyntaxKind::RCurly => (),
+        SyntaxKind::RSquare => (),
+        _ => (),
+    }
+}
+
+// link: $ =>
+// prec.right(2,
+//   seq(
+//     $.link_location,
+//     optional(
+//       $.link_description,
+//     ),
+//     optional(
+//       $.attribute,
+//     ),
+//   ),
+// ),
+fn link(p: &mut Parser) {
+    let m = p.start();
+    link_location(p);
+    if p.current() == SyntaxKind::LSquare {
+        link_description(p);
+    }
+    // attributes(p);
+    p.wrap(m, SyntaxKind::Link);
+}
+
+fn attributes(p: &mut Parser) {
+    todo!()
+}
+
+// # Link Description
+//
+// link_description ::= "[" { word | whitespace } "]"
+// 
+// Syntax usage: 
+//
+// (link_location | anchor_declaration) link_description
+// link_description anchor_definition
+// link_description     // standalone
+fn link_description(p: &mut Parser) {
+    let m = p.start();
+    p.bump(T!['[']);
+    while !p.at_set(syntax_set!(Eof, LineEnding, RSquare)) {
+        p.eat();
+    }
+    p.expect(T![']']);
+    p.wrap(m, SyntaxKind::LinkDescription);
+}
+
+// # File Location
+//
+// The file location is a construct that allows you to specify the /target file/ into which you
+// want to link to. This allows you to *link to targets within other files* or just link to other
+// Norg files entirely.
+//
+// When standalone, the link syntax will simply point to another `.norg` file relative to the
+// current file the link is contained in:
+//
+// |example
+// {:path/to/other-file:}
+// |end
+//
+// Note that you do *not* provide the `.norg` extension within the path.
+// +name path modifiers
+// You may use traditional modifiers in your path, like `/` (in e.g. `/my/file`) to signify the
+// root of your file system, `~` (in e.g. `~/Documents/my-file`) to signify the current user's home
+// directory, /or/ you can use the [Neorg]-specific `$` (in e.g. `$/my/file`) to signify the _root_
+// of the [Neorg] workspace. Since not all Norg files will be used strictly by [Neorg], the
+// workspace root can be implementation-specific - for git repos the workspace root could be simply
+// the root of the repository, and for other note-taking apps it could simply be the root of the
+// directory where all the notes are stored.
+// When multiple workspaces are present, the `$name` syntax may be used (e.g. `$notes/my/file`) to
+// link to a file from another workspace (in the example case named `notes`). When only a single
+// workspace is supported by the application running Neorg or the workspace is not found the user
+// should be met with an error.
+//
+// A file location may /only/ be accompanied by a {# detached modifier}, {# line number} or {# the
+// magic char (`#`)}[the magic char], in which case the links look like so:
+//
+// |example
+// {:path/to/file:123}
+// {:path/to/file:# Location within that file}
+// {:path/to/file:** Level 2 heading}
+// |end
+//
+// `/`, `@` and URLs are not allowed in combination with file locations:
+//
+// |example
+// {:path:/ file} <- invalid
+// {:path:@ timestamp} <- invalid
+// {:path:https://my-url} <- also invalid
+// |end
+//
+fn file_location(p: &mut Parser) {}
+// # Link Location
+//
+// The link location is defined through curly braces (`{}`) and contains the physical location
+// that the user would like to link to. Inside these curly braces you can find one (or more; with
+// limited inter-compatibility) of the following types of data:
+//
+// - A {# file location}
+// - A {# line number}
+// - A {# URL} (most commonly to an external resource)
+// - A {# detached modifier} followed by the name of the linkable
+// - {# nestable detached modifiers} can:*NOT* be linked to
+// - A {# custom detached modifiers}[custom detached modifier] specifically made for links (`/`,
+//   `#`, `?`, `=`)
+// - A {**** Timestamps (`@`)}[timestamp]
+// -- TODO: incomplete
+fn link_location(p: &mut Parser) {
+    let m = p.start();
+    p.bump(T!['{']);
+    while !p.at_set(syntax_set!(Eof, LineEnding, RCurly)) {
+        p.eat();
+    }
+    p.expect(T!['}']);
+    p.wrap(m, SyntaxKind::LinkLocation);
+}
+
+// // A paragraph segment can contain any paragraph element.
+// paragraph_segment: $ =>
+// prec.right(0,
+//   seq(
+//     optional($.weak_carryover_set),
+//     repeat1(
+//       choice(
+//         $._paragraph_element,
+//         alias($._conflict_open, "_word"),
+//       ),
+//     ),
+//   ),
+// ),
+fn paragraph_segment(p: &mut Parser) {
+    let m = p.start();
+    while !p.at_set(syntax_set!(Eof, LineEnding)) {
+        match p.current() {
+            SyntaxKind::LCurly => link(p),
+            _ => p.eat(),
+        }
+    }
+    p.wrap(m, T![ParaSegment]);
+}
+
+fn paragraph(p: &mut Parser) {
+    let m = p.start();
+    while !p.is_at_eof() {
+        if p.current() == SyntaxKind::LineEnding {
+            if para_break(p) == SyntaxKind::ParaBreak {
+                break;
+            }
+        } else {
+            paragraph_segment(p);
+        }
+    }
+    p.wrap(m, SyntaxKind::Paragraph);
+}
+
+// every newline ('\n') a.k.a `LineEnding` must only be parsed with para_break
+// cuz we reset span here [ line += 1 && col = 0 ] via ['eat_line_ending']
+fn para_break(p: &mut Parser) -> SyntaxKind {
+    //
+    // ParaBreak = LineEnding + LineEnding | LineEnding + WhiteSpace + LineEnding
+    //
+    // checks if this is a ParaBreak else return LineEnding
+    let m = p.start();
+    p.eat_line_ending();
+    if let Some(k) = p.next() {
+        if p.at(SyntaxKind::LineEnding) {
+            p.eat_line_ending();
+            p.wrap(m, SyntaxKind::ParaBreak);
+            return SyntaxKind::ParaBreak;
+        } else if p.at(SyntaxKind::WhiteSpace) && k == SyntaxKind::LineEnding {
+            p.eat();
+            p.eat_line_ending();
+            p.wrap(m, SyntaxKind::ParaBreak);
+            return SyntaxKind::ParaBreak;
+        }
+    }
+    SyntaxKind::LineEnding
+}
+
+fn quote(p: &mut Parser) {
+    let m = p.start();
+    p.eat_many(syntax_set!(LessThan));
+    p.expect(T![WhiteSpace]);
+    paragraph_segment(p);
+    p.wrap(m, T![Quote]);
+}
+
+fn strong_paragraph_delimiter() {
+    todo!()
+}
+
+fn horizontal_line() {
+    todo!()
+}
+
+fn tag() {
+    todo!()
+}
+
+fn table() {
+    todo!()
+}
+
+fn rangeable_detached_modifier() {
+    todo!()
+}
+
+fn nestable_detached_modifier() {
+    todo!()
+}
+
+fn heading(p: &mut Parser) {
+    let m = p.start();
+    p.eat_many(syntax_set!(Asterisk));
+    p.expect(T![WhiteSpace]);
+    paragraph_segment(p);
+    p.wrap(m, SyntaxKind::Heading);
 }
 
 fn parse_subscript(p: &mut Parser) {
@@ -645,8 +922,7 @@ fn parse_atmod_text_chunk(p: &mut Parser) {
         } else if p.at_set(ATTACHED_MODIFIERS.add(SyntaxKind::Pipe)) {
             if p.prev().filter(|k| *k == SyntaxKind::WhiteSpace).is_some() {
                 break;
-            }
-            else if p.next().filter(|k| *k == SyntaxKind::Word).is_some() {
+            } else if p.next().filter(|k| *k == SyntaxKind::Word).is_some() {
                 p.eat();
                 continue;
             } else {
@@ -656,7 +932,11 @@ fn parse_atmod_text_chunk(p: &mut Parser) {
             p.eat();
         }
     }
-    if p.at_set(ATTACHED_MODIFIERS) && p.next().filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k)).is_some() {
+    if p.at_set(ATTACHED_MODIFIERS)
+        && p.next()
+            .filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k))
+            .is_some()
+    {
         if let Some(n) = p.nodes.last_mut() {
             if n.kind() == SyntaxKind::WhiteSpace {
                 n.unexpected();
@@ -754,8 +1034,6 @@ assert_tree!(
     "//this is *bold* //"
 );
 
-
-
 #[tracing::instrument(skip_all)]
 fn parse_atmod(p: &mut Parser) {}
 
@@ -785,147 +1063,3 @@ macro_rules! assert_tree {
         }
     };
 }
-
-// #[cfg(test)]
-// mod test {
-//     assert_tree!(verbatim_05, parse_verbatim, "|this is a test");
-//     assert_tree!(verbatim_01, parse_verbatim, "|this is a test|");
-//     assert_tree!(verbatim_02, parse_verbatim, "| this is a test |");
-//     assert_tree!(
-//         verbatim_03,
-//         parse_verbatim,
-//         r###"|~ this is a test !"#$%&'()*+,-./:;<=>?@[]^_`{}~\thre|"###
-//     );
-//     assert_tree!(verbatim_04, parse_verbatim, r###"|~ `{}~\thre|"###);
-//     assert_tree!(text_chunk_01, parse_atmod_text_chunk, "this is text chunk");
-//     assert_tree!(
-//         text_chunk_01_err,
-//         parse_atmod_text_chunk,
-//         "this is text chunk / not this"
-//     );
-//     assert_tree!(
-//         para_segment_01,
-//         parse_para_segment,
-//         "this is |a verbatim text chunk|"
-//     );
-//     assert_tree!(
-//         para_segment_01_err,
-//         parse_para_segment,
-//         "this is |a verbatim text chunk"
-//     );
-//     assert_tree!(
-//         para_segment_02_err,
-//         parse_para_segment,
-//         "this is |a verbatim text chunk|\nthis is next"
-//     );
-//     assert_tree!(
-//         para_segment_03_err,
-//         parse_para_segment,
-//         "this isrbatim text chunk\nthis is next"
-//     );
-//     assert_tree!(
-//         paragraph_01,
-//         parse_paragraph,
-//         "this isrbatim text chunk\nthis is next"
-//     );
-//     assert_tree!(
-//         paragraph_02,
-//         parse_paragraph,
-//         r#"I am a paragraph segment
-// I am another paragraph segment
-//  Together we form a paragraph"#
-//     );
-//     assert_tree!(
-//         paragraph_03,
-//         parse_paragraph,
-//         r#"I am a paragraph segment.
-// I am another paragraph segment.
-//     Together we form a paragraph."#
-//     );
-//     assert_tree!(
-//         paragraph_with_verbatim_01,
-//         parse_paragraph,
-//         r#"I am a paragraph segment.
-// I am another paragraph segment.
-// this |is verbatim| content
-//     Together we form a paragraph."#
-//     );
-//     assert_tree!(
-//         paragraph_with_verbatim_emph_01,
-//         parse_paragraph,
-//         r#"I am a paragraph segment.
-// I am another paragraph segment.
-// this |is verbatim| content *this is bold*
-//     Together we form a paragraph."#
-//     );
-//
-//     // ParaBreak
-//     //
-//     // [case:1/2]
-//     //
-//     // `LineEnding` after a `LineEnding`
-//     assert_tree!(
-//         parabreak_01,
-//         parse_paragraph,
-//         r#" I am a paragraph segment.
-// I am another paragraph segment.
-//
-// this |is verbatim| content *this is bold*
-//     Together we form a paragraph."#
-//     );
-//
-//     // ParaBreak
-//     //
-//     // [case:2/2]
-//     //
-//     // empty line with many `WhiteSpace` followed by `LineEnding`
-//     assert_tree!(
-//         parabreak_02,
-//         parse_paragraph,
-//         r#" I am a paragraph segment.
-// I am another paragraph segment.
-//
-// this |is verbatim| content *this is bold*
-//     Together we form a paragraph."#
-//     );
-//     assert_tree!(
-//         parse_02,
-//         parse_paragraph,
-//         r#" I am a paragraph segment.
-//
-// I am another paragraph segment.
-//  are _attached_ to one another.
-// ([{}])
-//   *bold*
-//   /italic/
-//   _underline_
-//   |-strike-through-|
-//   !spoiler!
-//   ^superscript^
-//   ,subscript,
-//   `inline code`
-//   `%null modifier%`
-//   &variable&
-// this |is verbatim| content *this is bold*
-//     Together we form a paragraph."#
-//     );
-//
-//     quickcheck::quickcheck! {
-//         #[test]
-//         #[ignore]
-//         fn no_panic_on_random_input(input: String) -> bool {
-//             let mut parser = crate::Parser::new(&input);
-//             crate::parse_paragraph(&mut parser);
-//             true // test passes if no panic
-//         }
-//     }
-//
-//     proptest::proptest! {
-//         #[test]
-//         #[ignore]
-//         fn no_panic_prop(input in ".*") {
-//             let mut parser = crate::Parser::new(&input);
-//             crate::parse_paragraph(&mut parser);
-//         }
-//     }
-// }
