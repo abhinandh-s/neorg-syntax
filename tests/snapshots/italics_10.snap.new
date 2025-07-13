@@ -1,0 +1,12 @@
+---
+source: src/parser.rs
+assertion_line: 1053
+expression: output
+---
+Italics pos comes here
+  Slash: "/" Position { offsets: (1, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Error: "/" (unexpected /)
+  TextChunk pos comes here
+    Word: "this" Position { offsets: (6, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Error: "/" (unexpected /)
+  Slash: "/" Position { offsets: (8, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }

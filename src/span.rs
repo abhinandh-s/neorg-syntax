@@ -1,68 +1,137 @@
-//! # Span 
+//! # Span
 //!
 //! Token will have just offset
 //! SyntaxNode will get Span
 
-#[derive(PartialEq, Eq, Clone, Copy, Hash)]
-pub struct Span {
-    /// start character offset of the SyntaxNode
-    pub start: usize,
-    /// end character offset of the SyntaxNode
-    pub end: usize,
+use std::fmt::Display;
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Default, Debug)]
+pub struct Location {
+    pub offsets: (usize, usize),
+    pub start: Position,
+    pub end: Position,
+}
+
+impl Display for Location {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[ offsets: {}..{}, start ( line: {}, col: {} ], end ( line: {}, col: {} ) ]",
+            self.offsets.0,
+            self.offsets.1,
+            self.start.line,
+            self.start.col,
+            self.end.line,
+            self.end.col
+        )
+    }
 }
 
 #[macro_export]
-macro_rules! span {
+macro_rules! location {
+    ($offset:expr, $line:expr, $col:expr) => {
+        Location::new($offset, $line, $col)
+    };
+}
+
+impl Location {
+    pub fn new(offsets: (usize, usize), start: Position, end: Position) -> Self {
+        Self {
+            offsets,
+            start,
+            end,
+        }
+    }
+
+    pub const fn detached() -> Location {
+        Location {
+            offsets: (0, 0),
+            start: crate::position!(),
+            end: crate::position!(),
+        }
+    }
+}
+
+#[cfg(feature = "tower_lsp")]
+impl From<Location> for tower_lsp::lsp_types::Range {
+    fn from(val: Location) -> Self {
+        tower_lsp::lsp_types::Range {
+            start: tower_lsp::lsp_types::Position {
+                line: val.start.line as u32,
+                character: val.start.col as u32,
+            },
+            end: tower_lsp::lsp_types::Position {
+                line: val.end.line as u32,
+                character: val.start.line as u32,
+            },
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash)]
+pub struct Position {
+    /// start character offset of the SyntaxNode
+    pub line: usize,
+    /// end character offset of the SyntaxNode
+    pub col: usize,
+}
+
+#[macro_export]
+macro_rules! position {
+    () => {
+        Position::detached()
+    };
     ($start:expr, $end:expr) => {
-        Span {
-            start: $start,
-            end: $end,
+        Position {
+            line: $start,
+            col: $end,
         }
     };
 }
 
-impl std::fmt::Display for Span {
+impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[ span: {}..{} ]", self.start, self.end)
+        write!(f, "[ span: {}..{} ]", self.line, self.col)
     }
 }
 
-impl std::fmt::Debug for Span {
+impl std::fmt::Debug for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[ span: {}..{} ]", self.start, self.end)
+        write!(f, "[ span: {}..{} ]", self.line, self.col)
     }
 }
 
-impl Span {
+impl Position {
     pub fn new(start: usize, end: usize) -> Self {
-        Self { start, end }
+        Self {
+            line: start,
+            col: end,
+        }
     }
 
     pub fn start(&self) -> usize {
-        self.start
+        self.line
     }
 
     pub fn end(&self) -> usize {
-        self.end
+        self.col
     }
-    pub const fn detached() -> Span {
-        Self { start: 1, end: 1 }
+    pub const fn detached() -> Position {
+        Self { line: 1, col: 1 }
     }
 }
 
-impl Default for Span {
+impl Default for Position {
     fn default() -> Self {
-        Self { start: 1, end: 1 }
+        Position::detached()
     }
 }
 
 #[cfg(feature = "tower_lsp")]
 pub mod lsp {
 
-    use super::*;
-    use ropey::str_utils::{byte_to_char_idx, byte_to_line_idx, line_to_char_idx};
     use ropey::Rope;
-    use tower_lsp::lsp_types::{Position, Range};
+    use tower_lsp::lsp_types::Position;
 
     pub fn offset_to_position(offset: usize, rope: &Rope) -> Option<Position> {
         let line = rope.try_char_to_line(offset).ok()?;
@@ -75,57 +144,5 @@ pub mod lsp {
         let line_char_offset = rope.try_line_to_char(position.line as usize).ok()?;
         let slice = rope.slice(0..line_char_offset + position.character as usize);
         Some(slice.len_bytes())
-    }
-
-    impl Span {
-        /// -- FIX: erratic
-        pub fn to_char_offset(&self, text: &str) -> Span {
-            let s = byte_to_char_idx(text, self.start);
-            let e = byte_to_char_idx(text, self.end);
-            span!(s, e)
-        }
-
-        /// returns (beginning of char_offset, char len)
-        pub fn char_position(&self, text: &str) -> (usize, usize) {
-            let s = byte_to_char_idx(text, self.start);
-            let e = byte_to_char_idx(text, self.end);
-            (s + 1, e.saturating_sub(s))
-        }
-
-        /// Position in a text document expressed as zero-based line and character offset.
-        /// A position is between two characters like an 'insert' cursor in a editor.
-        ///
-        ///     // Line position in a document (zero-based).
-        ///     // Character offset on a line in a document (zero-based). The meaning of this
-        ///     // offset is determined by the negotiated `PositionEncodingKind`.
-        ///
-        ///     // If the character value is greater than the line length it defaults back
-        ///     // to the line length.
-        ///
-        /// zero based indexing
-        /// take a &str and try to convert the given span to lsp range
-        #[doc(hidden)]
-        #[doc = r" This is a doc comment."]
-        pub fn into_zero_based_lsp_range(self, text: &str) -> Option<Range> {
-            // Determine 0-indexed start and end lines.
-            let line_start = byte_to_line_idx(text, self.start) as u32;
-            let line_end = byte_to_line_idx(text, self.end) as u32;
-
-            // Determine 0-indexed character offsets.
-            let char_start_offset = byte_to_char_idx(text, self.start) as u32;
-            let char_end_offset = byte_to_char_idx(text, self.end) as u32;
-
-            // Compute the first char index for the start and end lines.
-            let line_start_first_idx = line_to_char_idx(text, line_start as usize) as u32;
-            let line_end_first_idx = line_to_char_idx(text, line_end as usize) as u32;
-
-            let start_diff = char_start_offset.saturating_sub(line_start_first_idx);
-            let end_diff = char_end_offset.saturating_sub(line_end_first_idx);
-
-            Some(Range {
-                start: Position::new(line_start, start_diff),
-                end: Position::new(line_end, end_diff),
-            })
-        }
     }
 }

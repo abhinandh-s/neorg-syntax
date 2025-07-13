@@ -6,6 +6,7 @@ use crate::kind_to_char;
 #[derive(Debug, Display, PartialEq, Eq, Clone, Copy, Hash)]
 #[repr(u8)]
 pub enum SyntaxKind {
+    TombStone,
     LineEnding,    // `\n`, `\r`, `\u{000C}`
     EscapedChar,   // neorg specific chars can be escaped
     Comment,       // %this is inline comment%, there is also an another way

@@ -1,0 +1,42 @@
+---
+source: src/parser.rs
+assertion_line: 1045
+expression: output
+---
+Italics pos comes here
+  Slash: "/" Position { offsets: (1, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  TextChunk pos comes here
+    Word: "an" Position { offsets: (3, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (4, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "italics" Position { offsets: (11, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (12, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "text" Position { offsets: (16, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (17, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "chunk" Position { offsets: (22, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (23, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "and" Position { offsets: (26, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (27, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "it" Position { offsets: (29, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (30, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "have" Position { offsets: (34, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (35, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "a" Position { offsets: (36, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (37, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Verbatim pos comes here
+    Pipe: "|" Position { offsets: (38, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    TextChunk pos comes here
+      WhiteSpace: " " Position { offsets: (39, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+      Word: "verbatim" Position { offsets: (47, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+      WhiteSpace: " " Position { offsets: (48, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Pipe: "|" Position { offsets: (49, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  TextChunk pos comes here
+    WhiteSpace: " " Position { offsets: (50, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "chunk" Position { offsets: (55, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (56, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "in" Position { offsets: (58, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (59, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "it" Position { offsets: (61, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (62, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Colon: ":" Position { offsets: (63, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    RParen: ")" Position { offsets: (64, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Slash: "/" Position { offsets: (65, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }

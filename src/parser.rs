@@ -35,8 +35,7 @@ pub struct Parser {
     /// Whether the parser has the expected set of open/close delimiters. This
     /// only ever transitions from `true` to `false`.
     balanced: bool,
-    line: usize,
-    col: usize,
+    loc: Location,
     /// Nodes representing the concrete syntax tree of previously parsed text.
     /// In Code and Math, includes previously parsed trivia, but not `token`.
     nodes: Vec<SyntaxNode>,
@@ -49,16 +48,17 @@ impl Parser {
             tokens,
             cursor: 0,
             balanced: true,
-            line: 0,
-            col: 0,
+            loc: Location::default(),
             nodes: Vec::new(),
         }
     }
 
     fn eat_line_ending(&mut self) {
         self.eat();
-        self.line += 1;
-        self.col = 0;
+        self.loc.start.line += 1;
+        self.loc.end.line += 1;
+        self.loc.start.col = 0;
+        self.loc.end.col = 0;
     }
 
     /// A marker that will point to the current token in the parser once it's
@@ -91,7 +91,32 @@ impl Parser {
     }
 
     fn eat(&mut self) {
-        let node = SyntaxNode::leaf(self.tokens[self.cursor].clone());
+        // Token `foobar`
+        //
+        // start_offset = 0,
+        // end_offset = 6,
+        // start_line = 0,
+        // end_line = 0,
+        // start_col = 0,
+        // end_col = 6,
+        //
+        // line won't get updated here. [see eat_line_ending]
+        let (start_offset, _) = self.loc.offsets;
+        let start_col = self.loc.start.col;
+
+        let current = self.tokens[self.cursor].clone();
+        self.loc.start.col += current.len();
+        self.loc.end.col += current.len();
+        self.loc.offsets.0 += current.len();
+        self.loc.offsets.1 += current.len();
+        let node = SyntaxNode::leaf(
+            current.clone(),
+            Location {
+                offsets: (start_offset, self.loc.offsets.1),
+                start: position!(self.loc.start.line, start_col),
+                end: position!(self.loc.end.line, self.loc.end.col),
+            },
+        );
         self.nodes.push(node);
         self.cursor += 1;
     }
@@ -170,11 +195,26 @@ impl Parser {
         self.current() == T![Eof]
     }
 
+    // Range:
+    //  Pos: line, col
+    //  Pos: line, col
+    //  Span: start, end
     fn wrap(&mut self, m: Marker, kind: SyntaxKind) {
-        let drained = self.nodes.drain(m.0..).collect();
-        dbg!("called wrap");
+        let drained: Vec<SyntaxNode> = self.nodes.drain(m.0..).collect();
+
+        let first = drained.first().map_or(Location::detached(), |f| f.loc());
+        let last = drained.last().map_or(Location::detached(), |f| f.loc());
+
         tracing::debug!(?drained, "wrap node");
-        let node = SyntaxNode::inner(kind, drained);
+        let node = SyntaxNode::inner(
+            kind,
+            drained,
+            Location {
+                offsets: (first.offsets.0, last.offsets.1),
+                start: first.start,
+                end: last.end,
+            },
+        );
         tracing::debug!(?m, ?kind, "wrap node");
         self.nodes.push(node);
     }
@@ -651,8 +691,8 @@ fn attributes(p: &mut Parser) {
 // # Link Description
 //
 // link_description ::= "[" { word | whitespace } "]"
-// 
-// Syntax usage: 
+//
+// Syntax usage:
 //
 // (link_location | anchor_declaration) link_description
 // link_description anchor_definition

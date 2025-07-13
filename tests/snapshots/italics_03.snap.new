@@ -1,0 +1,17 @@
+---
+source: src/parser.rs
+assertion_line: 997
+expression: output
+---
+Italics pos comes here
+  Slash: "/" Position { offsets: (1, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Error: " " (unexpected WhiteSpace)
+  TextChunk pos comes here
+    Word: "an" Position { offsets: (4, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (5, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "italics" Position { offsets: (12, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (13, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "text" Position { offsets: (17, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (18, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "chunk" Position { offsets: (23, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Slash: "/" Position { offsets: (24, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }

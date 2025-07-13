@@ -1,0 +1,21 @@
+---
+source: src/parser.rs
+assertion_line: 989
+expression: output
+---
+Italics pos comes here
+  Error: "/" (unclosed delimiter)
+  TextChunk pos comes here
+    Word: "an" Position { offsets: (3, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (4, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "italics" Position { offsets: (11, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (12, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "text" Position { offsets: (16, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (17, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "chunk" Position { offsets: (22, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (23, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "blah" Position { offsets: (27, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (28, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "blah" Position { offsets: (32, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (33, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "blah" Position { offsets: (37, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }

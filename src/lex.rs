@@ -18,7 +18,7 @@ mod char {
 }
 
 /// represents a single token emitted by `Lexer`
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TokenData {
     text: String,
     kind: SyntaxKind,
@@ -757,7 +757,7 @@ pub struct Spanned<T> {
     /// .
     pub item: T,
     /// .
-    pub span: crate::Span,
+    pub span: crate::Position,
 }
 /// .
 pub fn auto_spans(tokens: Vec<Token>) -> Vec<Spanned<Token>> {
@@ -768,7 +768,7 @@ pub fn auto_spans(tokens: Vec<Token>) -> Vec<Spanned<Token>> {
         let end = start + i.len();
         result.push(Spanned {
             item: i,
-            span: crate::Span { start, end },
+            span: crate::Position { line: start, col: end },
         });
         pos = end
     }

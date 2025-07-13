@@ -1,0 +1,22 @@
+---
+source: src/parser.rs
+assertion_line: 1061
+expression: output
+---
+Italics pos comes here
+  Slash: "/" Position { offsets: (1, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Error: "/" (unexpected /)
+  TextChunk pos comes here
+    Word: "this" Position { offsets: (6, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (7, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Word: "is" Position { offsets: (9, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " Position { offsets: (10, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Bold pos comes here
+    Asterisk: "*" Position { offsets: (11, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    TextChunk pos comes here
+      Word: "bold" Position { offsets: (15, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    Asterisk: "*" Position { offsets: (16, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  TextChunk pos comes here
+    WhiteSpace: " " Position { offsets: (17, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Error: "/" (unexpected /)
+  Slash: "/" Position { offsets: (19, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
