@@ -22,7 +22,7 @@ impl Display for Location {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[ offsets: {}..{}, start ( line: {}, col: {} ], end ( line: {}, col: {} ) ]",
+            "[ offsets: {}..{}, start ( line: {}, col: {} ) ], end ( line: {}, col: {} ) ]",
             self.offsets.0,
             self.offsets.1,
             self.start.line,
