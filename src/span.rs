@@ -1,7 +1,13 @@
 //! # Span
 //!
+//! span is the devel
+//!
+//! should i just give offset 
+//! or should i just give span [start_offset, end_offset]
+//! or should i give LSP like Range [ start: {line, col}, end: {line, col} ]
+//! 
 //! Token will have just offset
-//! SyntaxNode will get Span
+//! SyntaxNode will get offset, Span, Range(LSP)
 
 use std::fmt::Display;
 
