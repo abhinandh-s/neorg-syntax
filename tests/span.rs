@@ -1,3 +1,3 @@
 #[cfg(test)]
-#[cfg(feature = "tower_lsp")]
+#[cfg(feature = "tower-lsp")]
 mod test {}

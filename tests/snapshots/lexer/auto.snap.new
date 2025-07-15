@@ -1,0 +1,9 @@
+---
+source: src/lex.rs
+assertion_line: 768
+expression: tokens
+---
+[
+    WORD: "🙂⚠\u{fe0f}©®€🤯⌘"@10,
+    EOF: "\0"@1,
+]

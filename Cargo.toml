@@ -12,7 +12,7 @@ keywords = ["cli", "tool", "utility"]
 
 [features]
 default = []
-tower_lsp = ["dep:tower-lsp", "dep:ropey"]
+tower-lsp = ["dep:tower-lsp", "dep:ropey"]
 
 [dependencies]
 derive_screaming_snake_case = "1.0.0"

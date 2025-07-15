@@ -51,10 +51,7 @@ impl Parser {
 
     fn eat_line_ending(&mut self) {
         self.eat();
-        self.loc.start.line += 1;
-        self.loc.end.line += 1;
-        self.loc.start.col = 0;
-        self.loc.end.col = 0;
+        self.loc.bump_line(1);
     }
 
     /// A marker that will point to the current token in the parser once it's
@@ -97,21 +94,14 @@ impl Parser {
         // end_col = 6,
         //
         // line won't get updated here. [see eat_line_ending]
-        let (start_offset, _) = self.loc.offsets;
-        let start_col = self.loc.start.col;
+        let start_offset = self.loc.offsets();
 
         let current = self.tokens[self.cursor].clone();
-        self.loc.start.col += current.len();
-        self.loc.end.col += current.len();
-        self.loc.offsets.0 += current.len();
-        self.loc.offsets.1 += current.len();
+        self.loc.bump_col(current.len());
+        self.loc.bump_offset(current.len());
         let node = SyntaxNode::leaf(
             current.clone(),
-            Location {
-                offsets: (start_offset, self.loc.offsets.1),
-                start: position!(self.loc.start.line, start_col),
-                end: position!(self.loc.end.line, self.loc.end.col),
-            },
+            Location::new(start_offset, self.loc.line(), self.loc.character()),
         );
         self.nodes.push(node);
         self.cursor += 1;
@@ -205,11 +195,7 @@ impl Parser {
         let node = SyntaxNode::inner(
             kind,
             drained,
-            Location {
-                offsets: (first.offsets.0, last.offsets.1),
-                start: first.start,
-                end: last.end,
-            },
+            Location::new(first.offsets(), first.line(), first.character()),
         );
         tracing::debug!(?m, ?kind, "wrap node");
         self.nodes.push(node);

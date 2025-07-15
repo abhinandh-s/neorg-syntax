@@ -1,18 +1,18 @@
 ---
 source: src/parser.rs
-assertion_line: 1013
+assertion_line: 753
 expression: output
 ---
-Italics pos comes here
-  Slash: "/" Position { offsets: (1, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+Italics Location { offsets: 0, line: 0, col: 1 }
+  Slash: "/" [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
   Error: " " (unexpected WhiteSpace)
-  TextChunk pos comes here
-    Word: "an" Position { offsets: (4, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    WhiteSpace: " " Position { offsets: (5, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    Word: "italics" Position { offsets: (12, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    WhiteSpace: " " Position { offsets: (13, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    Word: "text" Position { offsets: (17, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    WhiteSpace: " " Position { offsets: (18, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    Word: "chunk" Position { offsets: (23, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  TextChunk Location { offsets: 2, line: 0, col: 4 }
+    Word: "an" [ offsets: 2, position: ( line: 0, col: 4 ) ] ]
+    WhiteSpace: " " [ offsets: 4, position: ( line: 0, col: 5 ) ] ]
+    Word: "italics" [ offsets: 5, position: ( line: 0, col: 12 ) ] ]
+    WhiteSpace: " " [ offsets: 12, position: ( line: 0, col: 13 ) ] ]
+    Word: "text" [ offsets: 13, position: ( line: 0, col: 17 ) ] ]
+    WhiteSpace: " " [ offsets: 17, position: ( line: 0, col: 18 ) ] ]
+    Word: "chunk" [ offsets: 18, position: ( line: 0, col: 23 ) ] ]
     Error: " " (unexpected WhiteSpace)
-  Slash: "/" Position { offsets: (25, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Slash: "/" [ offsets: 24, position: ( line: 0, col: 25 ) ] ]

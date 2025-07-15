@@ -1,12 +1,12 @@
 ---
 source: src/parser.rs
-assertion_line: 1053
+assertion_line: 793
 expression: output
 ---
-Italics pos comes here
-  Slash: "/" Position { offsets: (1, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+Italics Location { offsets: 0, line: 0, col: 1 }
+  Slash: "/" [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
   Error: "/" (unexpected /)
-  TextChunk pos comes here
-    Word: "this" Position { offsets: (6, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  TextChunk Location { offsets: 2, line: 0, col: 6 }
+    Word: "this" [ offsets: 2, position: ( line: 0, col: 6 ) ] ]
   Error: "/" (unexpected /)
-  Slash: "/" Position { offsets: (8, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+  Slash: "/" [ offsets: 7, position: ( line: 0, col: 8 ) ] ]

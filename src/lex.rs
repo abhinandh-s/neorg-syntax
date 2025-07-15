@@ -751,34 +751,8 @@ fn check_detached(chars: &mut Peekable<Chars<'_>>, expected: SyntaxKind) -> bool
     false
 }
 
-/// .
-#[derive(Debug)]
-pub struct Spanned<T> {
-    /// .
-    pub item: T,
-    /// .
-    pub span: crate::Position,
-}
-/// .
-pub fn auto_spans(tokens: Vec<Token>) -> Vec<Spanned<Token>> {
-    let mut pos: usize = 0;
-    let mut result = Vec::new();
-    for i in tokens {
-        let start = pos;
-        let end = start + i.len();
-        result.push(Spanned {
-            item: i,
-            span: crate::Position { line: start, col: end },
-        });
-        pos = end
-    }
-    result
-}
-
 #[test]
 fn auto() {
-    let lexed = Lexer::new("this is a test").lex();
-    let spanned = auto_spans(lexed);
     let snapshot_path = {
         let root = env!("CARGO_MANIFEST_DIR");
         std::path::Path::new(root)
@@ -788,7 +762,6 @@ fn auto() {
     };
 
     insta::with_settings!({ snapshot_path => snapshot_path, prepend_module_to_snapshot => false }, {
-        insta::assert_debug_snapshot!(spanned);
         let input = "🙂⚠️©®€🤯⌘";
         let mut binding = Lexer::new(input);
         let tokens = binding.lex();

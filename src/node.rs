@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use crate::{Location, Position, SyntaxKind, Token, position, token};
+use crate::{Location, Span, SyntaxKind, Token, token};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxNode(Repr);
@@ -41,12 +41,12 @@ enum Repr {
 
 impl SyntaxNode {
     /// Create a new leaf node.
-    pub fn leaf(tok: Token, pos: Location) -> Self {
+    pub(crate) fn leaf(tok: Token, pos: Location) -> Self {
         Self(Repr::Leaf(LeafNode::new(tok, pos)))
     }
 
     /// Create a new inner node with children.
-    pub fn inner(kind: SyntaxKind, children: Vec<SyntaxNode>, pos: Location) -> Self {
+    pub(crate) fn inner(kind: SyntaxKind, children: Vec<SyntaxNode>, pos: Location) -> Self {
         Self(Repr::Inner(Arc::new(InnerNode::new(kind, children, pos))))
     }
 
@@ -79,14 +79,55 @@ impl SyntaxNode {
     }
 
     /// The span of the node.
-    pub fn loc(&self) -> Location {
+    pub(crate) fn loc(&self) -> Location {
         match &self.0 {
             Repr::Leaf(leaf) => leaf.loc,
             Repr::Inner(inner) => inner.loc,
             Repr::Error(node) => node.error.loc,
         }
     }
+    /// The span of the node.
+    pub(crate) fn offsets(&self) -> usize {
+        match &self.0 {
+            Repr::Leaf(leaf) => leaf.offsets(),
+            Repr::Inner(inner) => inner.offsets(),
+            Repr::Error(node) => node.offsets(),
+        }
+    }
+    #[cfg(feature = "tower-lsp")]
+    pub fn range(&self) -> tower_lsp::lsp_types::Range {
+        match &self.0 {
+            Repr::Leaf(leaf) => leaf.range(),
+            Repr::Inner(inner) => inner.range(),
+            Repr::Error(node) => node.range(),
+        }
+    }
 
+
+    #[cfg(feature = "tower-lsp")]
+    pub fn start_position(&self) -> tower_lsp::lsp_types::Position {
+        match &self.0 {
+            Repr::Leaf(leaf) => leaf.start_position(),
+            Repr::Inner(inner) => inner.start_position(),
+            Repr::Error(node) => node.start_position(),
+        }
+    }
+        #[cfg(feature = "tower-lsp")]
+    pub fn end_position(&self) -> tower_lsp::lsp_types::Position {
+        match &self.0 {
+            Repr::Leaf(leaf) => leaf.end_position(),
+            Repr::Inner(inner) => inner.end_position(),
+            Repr::Error(node) => node.end_position(),
+        }
+    }
+    /// The span of the node.
+    pub(crate) fn len(&self) -> usize {
+        match &self.0 {
+            Repr::Leaf(leaf) => leaf.len(),
+            Repr::Inner(inner) => inner.len(),
+            Repr::Error(node) => node.len(),
+        }
+    }
     /// The text of the node if it is a leaf or error node.
     ///
     /// Returns the empty string if this is an inner node.
@@ -200,6 +241,7 @@ impl LeafNode {
         self.token.kind()
     }
 
+    /// utf16 len of the text in token
     fn len(&self) -> usize {
         self.token.len()
     }
@@ -208,13 +250,49 @@ impl LeafNode {
         self.token.text()
     }
 
-    fn is_empty(&self) -> bool {
-        self.token.is_empty()
-    }
-
     /// Whether the two leaf nodes are the same apart from spans.
     fn spanless_eq(&self, other: &Self) -> bool {
         self.kind() == other.kind() && self.text() == other.text()
+    }
+
+    pub fn line(&self) -> usize {
+        self.loc.line()
+    }
+
+    pub fn col(&self) -> usize {
+        self.loc.character()
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    pub fn start_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.line();
+        let character = self.col();
+        tower_lsp::lsp_types::Position::new(line as u32, character as u32)
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    pub fn end_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.line();
+        let character = self.col();
+        tower_lsp::lsp_types::Position::new(line as u32, (character + self.len()) as u32)
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    pub fn range(&self) -> tower_lsp::lsp_types::Range {
+        tower_lsp::lsp_types::Range {
+            start: self.start_position(),
+            end: self.end_position(),
+        }
+    }
+
+    pub fn offsets(&self) -> usize {
+        self.loc.offsets()
+    }
+
+    pub fn span(&mut self) -> Span {
+        let start = self.offsets();
+        self.loc.bump_offset(self.len());
+        Span::new(start, self.offsets())
     }
 }
 
@@ -257,6 +335,53 @@ impl InnerNode {
             children,
         }
     }
+
+    /// utf16 len of the text in token
+    fn len(&self) -> usize {
+        let start = self.children.first().map_or(0, |f| f.offsets()) as i32;
+        let end = self.children.last().map_or(0, |f| f.offsets()) as i32;
+        end.saturating_sub(start) as usize
+    }
+    pub fn line(&self) -> usize {
+        self.children.first().map_or(0, |f| f.loc().line())
+    }
+
+    pub fn col(&self) -> usize {
+        self.children.first().map_or(0, |f| f.loc().character())
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    pub fn start_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.line();
+        let character = self.col();
+        tower_lsp::lsp_types::Position::new(line as u32, character as u32)
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    pub fn end_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.children.last().map_or(0, |f|f.loc().line());
+        let col = self.children.last().map_or(0, |f|f.loc().character());
+        let character = col;
+        tower_lsp::lsp_types::Position::new(line as u32, (character) as u32)
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    pub fn range(&self) -> tower_lsp::lsp_types::Range {
+        tower_lsp::lsp_types::Range {
+            start: self.start_position(),
+            end: self.end_position(),
+        }
+    }
+
+    pub fn offsets(&self) -> usize {
+        self.loc.offsets()
+    }
+
+    pub fn span(&mut self) -> Span {
+        let start = self.offsets();
+        self.loc.bump_offset(self.len());
+        Span::new(start, self.offsets())
+    }
 }
 
 impl std::fmt::Debug for InnerNode {
@@ -277,7 +402,7 @@ struct ErrorNode {
     text: String,
     /// The syntax error.
     error: SyntaxError,
-    pos: Location,
+    loc: Location,
 }
 
 impl ErrorNode {
@@ -286,7 +411,7 @@ impl ErrorNode {
         Self {
             text: text.into(),
             error,
-            pos: Location::detached(),
+            loc: Location::detached(),
         }
     }
 
@@ -298,6 +423,51 @@ impl ErrorNode {
     /// Whether the two leaf nodes are the same apart from spans.
     fn spanless_eq(&self, other: &Self) -> bool {
         self.text == other.text && self.error.spanless_eq(&other.error)
+    }
+    /// utf16 len of the text in token
+    fn len(&self) -> usize {
+        let mut len = 0;
+        self.text.chars().for_each(|f| len += f.len_utf16());
+        len
+    }
+    pub fn line(&self) -> usize {
+        self.loc.line()
+    }
+
+    pub fn character(&self) -> usize {
+        self.loc.character()
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    pub fn start_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.line();
+        let character = self.character();
+        tower_lsp::lsp_types::Position::new(line as u32, character as u32)
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    pub fn end_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.line();
+        let character = self.character();
+        tower_lsp::lsp_types::Position::new(line as u32, (character + self.len()) as u32)
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    pub fn range(&self) -> tower_lsp::lsp_types::Range {
+        tower_lsp::lsp_types::Range {
+            start: self.start_position(),
+            end: self.end_position(),
+        }
+    }
+
+    pub fn offsets(&self) -> usize {
+        self.loc.offsets()
+    }
+
+    pub fn span(&mut self) -> Span {
+        let start = self.offsets();
+        self.loc.bump_offset(self.len());
+        Span::new(start, self.offsets())
     }
 }
 
@@ -311,12 +481,12 @@ impl std::fmt::Debug for ErrorNode {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct SyntaxError {
     /// The node's span.
-    pub loc: Location,
+    pub(crate) loc: Location,
     /// The error message.
-    pub message: String,
+    pub(crate) message: String,
     /// Additional hints to the user, indicating how this error could be avoided
     /// or worked around.
-    pub hints: Vec<String>,
+    pub(crate) hints: Vec<String>,
 }
 
 impl SyntaxError {
@@ -331,6 +501,14 @@ impl SyntaxError {
     /// Whether the two errors are the same apart from spans.
     fn spanless_eq(&self, other: &Self) -> bool {
         self.message == other.message && self.hints == other.hints
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    pub fn hints(&self) -> &[String] {
+        &self.hints
     }
 }
 
@@ -368,122 +546,29 @@ impl SyntaxNode {
     }
 }
 
-// TODO: add is_empty() to this
-trait LocationTrait {
-    fn len(&self) -> usize;
-    fn offset(&self) -> usize;
-    fn span(&self) -> Position;
-    #[cfg(feature = "tower_lsp")]
-    fn position(&self) -> tower_lsp::lsp_types::Position;
-    #[cfg(feature = "tower_lsp")]
-    fn range(&self) -> tower_lsp::lsp_types::Range;
-}
+#[cfg(test)]
+mod test {
+    #[test]
+    #[cfg(feature = "tower-lsp")]
+    fn range() {
+        use tower_lsp::lsp_types::Position;
 
-impl LocationTrait for LeafNode {
-    /// The byte length of the node in the source text.
-    fn len(&self) -> usize {
-        self.token.len()
-    }
+        use crate::{document, Parser};
 
-    fn offset(&self) -> usize {
-        self.loc.offsets.0
-    }
-
-    fn span(&self) -> Position {
-        position!(self.loc.offsets.0, self.loc.offsets.0 + self.len())
-    }
-
-    #[cfg(feature = "tower_lsp")]
-    fn position(&self) -> tower_lsp::lsp_types::Position {
-        tower_lsp::lsp_types::Position::new(
-            self.loc.start.start() as u32,
-            self.loc.end.end() as u32,
-        )
-    }
-
-    #[cfg(feature = "tower_lsp")]
-    fn range(&self) -> tower_lsp::lsp_types::Range {
-        let line = self.loc.start.start() as u32;
-        let character = (self.loc.end.end() + self.len()) as u32;
-        tower_lsp::lsp_types::Range {
-            start: self.position(),
-            end: tower_lsp::lsp_types::Position { line, character },
-        }
-    }
-}
-
-impl LocationTrait for ErrorNode {
-    fn offset(&self) -> usize {
-        self.pos.offsets.0
-    }
-
-    fn span(&self) -> Position {
-        position!(self.pos.offsets.0, self.pos.offsets.0 + self.len())
-    }
-
-    /// The char length of the node in the source text.
-    fn len(&self) -> usize {
-        self.text.len()
-    }
-
-    #[cfg(feature = "tower_lsp")]
-    fn position(&self) -> tower_lsp::lsp_types::Position {
-        tower_lsp::lsp_types::Position::new(
-            self.pos.start.start() as u32,
-            self.pos.end.end() as u32,
-        )
-    }
-
-    #[cfg(feature = "tower_lsp")]
-    fn range(&self) -> tower_lsp::lsp_types::Range {
-        let line = self.pos.start.start() as u32;
-        let character = (self.pos.end.end() + self.len()) as u32;
-        tower_lsp::lsp_types::Range {
-            start: self.position(),
-            end: tower_lsp::lsp_types::Position { line, character },
-        }
-    }
-}
-
-impl LocationTrait for InnerNode {
-    fn offset(&self) -> usize {
-        self.loc.offsets.0
-    }
-
-    fn span(&self) -> Position {
-        let start = self.loc.offsets.0;
-        let mut end = start;
-        for i in &self.children {
-            end += i.text().chars().count();
-        }
-        position!(start, end)
-    }
-
-    /// The char length of the node in the source text.
-    fn len(&self) -> usize {
-        let start = self.loc.offsets.0;
-        let mut end = start;
-        for i in &self.children {
-            end += i.text().chars().count();
-        }
-        end
-    }
-
-    #[cfg(feature = "tower_lsp")]
-    fn position(&self) -> tower_lsp::lsp_types::Position {
-        tower_lsp::lsp_types::Position::new(
-            self.loc.start.start() as u32,
-            self.loc.end.end() as u32,
-        )
-    }
-
-    #[cfg(feature = "tower_lsp")]
-    fn range(&self) -> tower_lsp::lsp_types::Range {
-        let line = self.loc.start.start() as u32;
-        let character = (self.loc.end.end() + self.len()) as u32;
-        tower_lsp::lsp_types::Range {
-            start: self.position(),
-            end: tower_lsp::lsp_types::Position { line, character },
-        }
+        let source = "* this is a heading\nThis";
+        let mut p = Parser::new(source);
+        let res = document(&mut p);
+        assert_eq!(0, res.loc().line());
+        assert_eq!(1, res.loc().character());
+        assert_eq!(0, res.loc().offsets());
+        assert_eq!(Position::new(0, 1), res.start_position());
+        assert_eq!(Position::new(1, 4), res.end_position());
+        // assert_eq!(
+        //     tower_lsp::lsp_types::Range::new(
+        //         tower_lsp::lsp_types::Position::new(0, 0),
+        //         tower_lsp::lsp_types::Position::new(1, 3)
+        //     ),
+        //     range
+        // )
     }
 }

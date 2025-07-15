@@ -1,18 +1,18 @@
 ---
 source: src/parser.rs
-assertion_line: 1021
+assertion_line: 761
 expression: output
 ---
-Italics pos comes here
-  Slash: "/" Position { offsets: (1, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-  TextChunk pos comes here
-    Word: "an" Position { offsets: (3, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    WhiteSpace: " " Position { offsets: (4, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    Word: "italics" Position { offsets: (11, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    WhiteSpace: " " Position { offsets: (12, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+Italics Location { offsets: 0, line: 0, col: 1 }
+  Slash: "/" [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
+  TextChunk Location { offsets: 1, line: 0, col: 3 }
+    Word: "an" [ offsets: 1, position: ( line: 0, col: 3 ) ] ]
+    WhiteSpace: " " [ offsets: 3, position: ( line: 0, col: 4 ) ] ]
+    Word: "italics" [ offsets: 4, position: ( line: 0, col: 11 ) ] ]
+    WhiteSpace: " " [ offsets: 11, position: ( line: 0, col: 12 ) ] ]
     Error: "\n" (unexpected LineEnding)
-    WhiteSpace: " " Position { offsets: (14, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    Word: "text" Position { offsets: (18, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    WhiteSpace: " " Position { offsets: (19, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-    Word: "chunk" Position { offsets: (24, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
-  Slash: "/" Position { offsets: (25, 0), start: [ span: 1..1 ], end: [ span: 1..1 ] }
+    WhiteSpace: " " [ offsets: 13, position: ( line: 0, col: 14 ) ] ]
+    Word: "text" [ offsets: 14, position: ( line: 0, col: 18 ) ] ]
+    WhiteSpace: " " [ offsets: 18, position: ( line: 0, col: 19 ) ] ]
+    Word: "chunk" [ offsets: 19, position: ( line: 0, col: 24 ) ] ]
+  Slash: "/" [ offsets: 24, position: ( line: 0, col: 25 ) ] ]
