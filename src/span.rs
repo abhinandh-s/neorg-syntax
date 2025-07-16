@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! # Span
 //!
 //! SyntaxNode will get offset, Span, Range(LSP)
@@ -10,9 +12,9 @@
 pub(crate) struct Location {
     offsets: usize,
     /// start character offset of the SyntaxNode
-    line: usize,
+    line: u32,
     /// end character offset of the SyntaxNode
-    character: usize,
+    character: u32,
 }
 
 impl std::fmt::Display for Location {
@@ -35,20 +37,24 @@ macro_rules! location {
     };
 }
 
-    #[allow(dead_code)]
+#[allow(dead_code)]
 impl Location {
-    pub fn new(offsets: usize, line: usize, col: usize) -> Self {
-        Self { offsets, line, character: col }
+    pub fn new(offsets: usize, line: u32, col: u32) -> Self {
+        Self {
+            offsets,
+            line,
+            character: col,
+        }
     }
 
     pub fn offsets(&self) -> usize {
         self.offsets
     }
 
-    pub fn line(&self) -> usize {
+    pub fn line(&self) -> u32 {
         self.line
     }
-    pub fn character(&self) -> usize {
+    pub fn character(&self) -> u32 {
         self.character
     }
 
@@ -62,46 +68,20 @@ impl Location {
     pub(crate) fn bump_offset(&mut self, count: usize) {
         self.offsets += count;
     }
-    pub(crate) fn bump_line(&mut self, count: usize) {
+    pub(crate) fn bump_line(&mut self, count: u32) {
         self.line += count;
         self.set_col(0);
     }
-    pub(crate) fn bump_col(&mut self, count: usize) {
+    pub(crate) fn bump_col(&mut self, count: u32) {
         self.character += count;
     }
 
-    pub(crate) fn set_line(&mut self, line: usize) {
+    pub(crate) fn set_line(&mut self, line: u32) {
         self.line = line;
     }
 
-    pub(crate) fn set_col(&mut self, col: usize) {
+    pub(crate) fn set_col(&mut self, col: u32) {
         self.character = col;
-    }
-}
-
-#[cfg(feature = "tower-lsp")]
-impl From<Location> for tower_lsp::lsp_types::Range {
-    fn from(val: Location) -> Self {
-        tower_lsp::lsp_types::Range {
-            start: tower_lsp::lsp_types::Position {
-                line: val.line as u32,
-                character: val.character as u32,
-            },
-            end: tower_lsp::lsp_types::Position {
-                line: val.line as u32,
-                character: val.line as u32,
-            },
-        }
-    }
-}
-
-#[cfg(feature = "tower-lsp")]
-impl From<Location> for tower_lsp::lsp_types::Position {
-    fn from(value: Location) -> Self {
-        tower_lsp::lsp_types::Position {
-            line: value.line as u32,
-            character: value.line as u32,
-        }
     }
 }
 

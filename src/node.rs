@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::sync::Arc;
 
 use crate::{Location, Span, SyntaxKind, Token, token};
@@ -10,13 +8,13 @@ pub struct SyntaxNode(Repr);
 #[macro_export]
 macro_rules! node {
     ($token:expr, $pos:expr) => {
-        LeafNode::new(token, $pos) as SyntaxNode
+        LeafNode::new($token, $pos) as SyntaxNode
     };
 }
 
 impl From<InnerNode> for SyntaxNode {
     fn from(value: InnerNode) -> Self {
-        SyntaxNode(Repr::Inner(value.into()))
+        SyntaxNode(Repr::Inner(Arc::new(value)))
     }
 }
 
@@ -28,7 +26,7 @@ impl From<LeafNode> for SyntaxNode {
 
 impl From<ErrorNode> for SyntaxNode {
     fn from(value: ErrorNode) -> Self {
-        SyntaxNode(Repr::Error(value.into()))
+        SyntaxNode(Repr::Error(Arc::new(value)))
     }
 }
 
@@ -39,47 +37,45 @@ enum Repr {
     Error(Arc<ErrorNode>),
 }
 
+#[allow(dead_code)]
 impl SyntaxNode {
     /// Create a new leaf node.
     pub(crate) fn leaf(tok: Token, pos: Location) -> Self {
-        Self(Repr::Leaf(LeafNode::new(tok, pos)))
+        LeafNode::new(tok, pos).into()
     }
 
     /// Create a new inner node with children.
     pub(crate) fn inner(kind: SyntaxKind, children: Vec<SyntaxNode>, pos: Location) -> Self {
-        Self(Repr::Inner(Arc::new(InnerNode::new(kind, children, pos))))
+        InnerNode::new(kind, children, pos).into()
     }
 
     /// Create a new error node.
     pub fn error(error: SyntaxError, text: impl Into<String>) -> Self {
-        Self(Repr::Error(Arc::new(ErrorNode::new(error, text))))
+        ErrorNode::new(error, text).into()
     }
 
     /// Create a dummy node of the given kind.
     ///
     /// Panics if `kind` is `SyntaxKind::Error`.
     #[track_caller]
-    pub fn placeholder(kind: SyntaxKind) -> Self {
+    pub fn placeholder(kind: SyntaxKind) -> impl Into<Self> {
         if matches!(kind, SyntaxKind::Error) {
             panic!("cannot create error placeholder");
         }
-        Self(Repr::Leaf(LeafNode {
-            loc: Location::detached(),
-            token: token!(SyntaxKind::TombStone, "", 0),
-        }))
+        LeafNode::new(token!(SyntaxKind::TombStone, "", 0), Location::detached())
     }
 
     /// The type of the node.
     pub fn kind(&self) -> SyntaxKind {
         match &self.0 {
             Repr::Leaf(leaf) => leaf.kind(),
-            Repr::Inner(inner) => inner.kind,
+            Repr::Inner(inner) => inner.kind(),
             Repr::Error(_) => SyntaxKind::Error,
         }
     }
 
     /// The span of the node.
-    pub(crate) fn loc(&self) -> Location {
+    pub(super) fn loc(&self) -> Location {
         match &self.0 {
             Repr::Leaf(leaf) => leaf.loc,
             Repr::Inner(inner) => inner.loc,
@@ -87,11 +83,11 @@ impl SyntaxNode {
         }
     }
     /// The span of the node.
-    pub(crate) fn offsets(&self) -> usize {
+    pub fn offset(&self) -> usize {
         match &self.0 {
-            Repr::Leaf(leaf) => leaf.offsets(),
-            Repr::Inner(inner) => inner.offsets(),
-            Repr::Error(node) => node.offsets(),
+            Repr::Leaf(leaf) => leaf.offset(),
+            Repr::Inner(inner) => inner.offset(),
+            Repr::Error(node) => node.offset(),
         }
     }
     #[cfg(feature = "tower-lsp")]
@@ -103,7 +99,6 @@ impl SyntaxNode {
         }
     }
 
-
     #[cfg(feature = "tower-lsp")]
     pub fn start_position(&self) -> tower_lsp::lsp_types::Position {
         match &self.0 {
@@ -112,7 +107,7 @@ impl SyntaxNode {
             Repr::Error(node) => node.start_position(),
         }
     }
-        #[cfg(feature = "tower-lsp")]
+    #[cfg(feature = "tower-lsp")]
     pub fn end_position(&self) -> tower_lsp::lsp_types::Position {
         match &self.0 {
             Repr::Leaf(leaf) => leaf.end_position(),
@@ -121,11 +116,11 @@ impl SyntaxNode {
         }
     }
     /// The span of the node.
-    pub(crate) fn len(&self) -> usize {
+    pub fn len_utf16(&self) -> usize {
         match &self.0 {
-            Repr::Leaf(leaf) => leaf.len(),
-            Repr::Inner(inner) => inner.len(),
-            Repr::Error(node) => node.len(),
+            Repr::Leaf(leaf) => leaf.len_utf16(),
+            Repr::Inner(inner) => inner.len_utf16(),
+            Repr::Error(node) => node.len_utf16(),
         }
     }
     /// The text of the node if it is a leaf or error node.
@@ -229,6 +224,31 @@ struct LeafNode {
     token: Token,
 }
 
+impl LocationTrait for LeafNode {
+    /// utf16 len of the text in token
+    fn len_utf16(&self) -> usize {
+        self.token.len()
+    }
+
+    fn offset(&self) -> usize {
+        self.loc.offsets()
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    fn start_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.line();
+        let character = self.col();
+        tower_lsp::lsp_types::Position::new(line, character)
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    fn end_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.line();
+        let character = self.col();
+        tower_lsp::lsp_types::Position::new(line, character + (self.len_utf16() as u32))
+    }
+}
+
 impl LeafNode {
     /// Create a new leaf node.
     #[track_caller]
@@ -241,58 +261,16 @@ impl LeafNode {
         self.token.kind()
     }
 
-    /// utf16 len of the text in token
-    fn len(&self) -> usize {
-        self.token.len()
-    }
-
     fn text(&self) -> &str {
         self.token.text()
     }
 
-    /// Whether the two leaf nodes are the same apart from spans.
-    fn spanless_eq(&self, other: &Self) -> bool {
-        self.kind() == other.kind() && self.text() == other.text()
-    }
-
-    pub fn line(&self) -> usize {
+    fn line(&self) -> u32 {
         self.loc.line()
     }
 
-    pub fn col(&self) -> usize {
+    fn col(&self) -> u32 {
         self.loc.character()
-    }
-
-    #[cfg(feature = "tower-lsp")]
-    pub fn start_position(&self) -> tower_lsp::lsp_types::Position {
-        let line = self.line();
-        let character = self.col();
-        tower_lsp::lsp_types::Position::new(line as u32, character as u32)
-    }
-
-    #[cfg(feature = "tower-lsp")]
-    pub fn end_position(&self) -> tower_lsp::lsp_types::Position {
-        let line = self.line();
-        let character = self.col();
-        tower_lsp::lsp_types::Position::new(line as u32, (character + self.len()) as u32)
-    }
-
-    #[cfg(feature = "tower-lsp")]
-    pub fn range(&self) -> tower_lsp::lsp_types::Range {
-        tower_lsp::lsp_types::Range {
-            start: self.start_position(),
-            end: self.end_position(),
-        }
-    }
-
-    pub fn offsets(&self) -> usize {
-        self.loc.offsets()
-    }
-
-    pub fn span(&mut self) -> Span {
-        let start = self.offsets();
-        self.loc.bump_offset(self.len());
-        Span::new(start, self.offsets())
     }
 }
 
@@ -316,6 +294,7 @@ struct InnerNode {
     children: Vec<SyntaxNode>,
 }
 
+#[allow(dead_code)]
 impl InnerNode {
     /// Create a new inner node with the given kind and children.
     #[track_caller]
@@ -335,52 +314,44 @@ impl InnerNode {
             children,
         }
     }
-
-    /// utf16 len of the text in token
-    fn len(&self) -> usize {
-        let start = self.children.first().map_or(0, |f| f.offsets()) as i32;
-        let end = self.children.last().map_or(0, |f| f.offsets()) as i32;
-        end.saturating_sub(start) as usize
-    }
-    pub fn line(&self) -> usize {
+    pub fn line(&self) -> u32 {
         self.children.first().map_or(0, |f| f.loc().line())
     }
 
-    pub fn col(&self) -> usize {
+    pub fn col(&self) -> u32 {
         self.children.first().map_or(0, |f| f.loc().character())
     }
 
-    #[cfg(feature = "tower-lsp")]
-    pub fn start_position(&self) -> tower_lsp::lsp_types::Position {
-        let line = self.line();
-        let character = self.col();
-        tower_lsp::lsp_types::Position::new(line as u32, character as u32)
+    fn kind(&self) -> SyntaxKind {
+        self.kind
+    }
+}
+
+impl LocationTrait for InnerNode {
+    /// utf16 len of the text in token
+    fn len_utf16(&self) -> usize {
+        let start = self.children.first().map_or(0, |f| f.offset()) as u32;
+        let end = self.children.last().map_or(0, |f| f.offset()) as u32;
+        end.saturating_sub(start) as usize
     }
 
-    #[cfg(feature = "tower-lsp")]
-    pub fn end_position(&self) -> tower_lsp::lsp_types::Position {
-        let line = self.children.last().map_or(0, |f|f.loc().line());
-        let col = self.children.last().map_or(0, |f|f.loc().character());
-        let character = col;
-        tower_lsp::lsp_types::Position::new(line as u32, (character) as u32)
-    }
-
-    #[cfg(feature = "tower-lsp")]
-    pub fn range(&self) -> tower_lsp::lsp_types::Range {
-        tower_lsp::lsp_types::Range {
-            start: self.start_position(),
-            end: self.end_position(),
-        }
-    }
-
-    pub fn offsets(&self) -> usize {
+    fn offset(&self) -> usize {
         self.loc.offsets()
     }
 
-    pub fn span(&mut self) -> Span {
-        let start = self.offsets();
-        self.loc.bump_offset(self.len());
-        Span::new(start, self.offsets())
+    #[cfg(feature = "tower-lsp")]
+    fn start_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.line();
+        let character = self.col();
+        tower_lsp::lsp_types::Position::new(line, character)
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    fn end_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.children.last().map_or(0, |f| f.loc().line());
+        let col = self.children.last().map_or(0, |f| f.loc().character());
+        let character = col;
+        tower_lsp::lsp_types::Position::new(line, character)
     }
 }
 
@@ -402,7 +373,6 @@ struct ErrorNode {
     text: String,
     /// The syntax error.
     error: SyntaxError,
-    loc: Location,
 }
 
 impl ErrorNode {
@@ -411,7 +381,6 @@ impl ErrorNode {
         Self {
             text: text.into(),
             error,
-            loc: Location::detached(),
         }
     }
 
@@ -420,54 +389,39 @@ impl ErrorNode {
         self.error.hints.push(hint.into());
     }
 
-    /// Whether the two leaf nodes are the same apart from spans.
-    fn spanless_eq(&self, other: &Self) -> bool {
-        self.text == other.text && self.error.spanless_eq(&other.error)
+    pub fn line(&self) -> u32 {
+        self.error.loc.line()
     }
+
+    pub fn character(&self) -> u32 {
+        self.error.loc.character()
+    }
+}
+
+impl LocationTrait for ErrorNode {
     /// utf16 len of the text in token
-    fn len(&self) -> usize {
+    fn len_utf16(&self) -> usize {
         let mut len = 0;
         self.text.chars().for_each(|f| len += f.len_utf16());
         len
     }
-    pub fn line(&self) -> usize {
-        self.loc.line()
-    }
 
-    pub fn character(&self) -> usize {
-        self.loc.character()
+    fn offset(&self) -> usize {
+        self.error.loc.offsets()
     }
 
     #[cfg(feature = "tower-lsp")]
-    pub fn start_position(&self) -> tower_lsp::lsp_types::Position {
+    fn start_position(&self) -> tower_lsp::lsp_types::Position {
+        let line = self.error.loc.line();
+        let character = self.error.loc.character();
+        tower_lsp::lsp_types::Position::new(line, character)
+    }
+
+    #[cfg(feature = "tower-lsp")]
+    fn end_position(&self) -> tower_lsp::lsp_types::Position {
         let line = self.line();
         let character = self.character();
-        tower_lsp::lsp_types::Position::new(line as u32, character as u32)
-    }
-
-    #[cfg(feature = "tower-lsp")]
-    pub fn end_position(&self) -> tower_lsp::lsp_types::Position {
-        let line = self.line();
-        let character = self.character();
-        tower_lsp::lsp_types::Position::new(line as u32, (character + self.len()) as u32)
-    }
-
-    #[cfg(feature = "tower-lsp")]
-    pub fn range(&self) -> tower_lsp::lsp_types::Range {
-        tower_lsp::lsp_types::Range {
-            start: self.start_position(),
-            end: self.end_position(),
-        }
-    }
-
-    pub fn offsets(&self) -> usize {
-        self.loc.offsets()
-    }
-
-    pub fn span(&mut self) -> Span {
-        let start = self.offsets();
-        self.loc.bump_offset(self.len());
-        Span::new(start, self.offsets())
+        tower_lsp::lsp_types::Position::new(line, character + (self.len_utf16() as u32))
     }
 }
 
@@ -498,10 +452,6 @@ impl SyntaxError {
             hints: vec![],
         }
     }
-    /// Whether the two errors are the same apart from spans.
-    fn spanless_eq(&self, other: &Self) -> bool {
-        self.message == other.message && self.hints == other.hints
-    }
 
     pub fn message(&self) -> &str {
         &self.message
@@ -526,7 +476,7 @@ impl SyntaxNode {
                     ));
                 }
                 Repr::Inner(inner) => {
-                    output.push_str(&format!("{padding}{:?} {:?}\n", inner.kind, inner.loc));
+                    output.push_str(&format!("{padding}{:?} {}\n", inner.kind, inner.loc));
                     for child in &inner.children {
                         fmt(child, indent + 1, output);
                     }
@@ -546,6 +496,41 @@ impl SyntaxNode {
     }
 }
 
+// req methods
+//
+// - len
+// - offset
+// - start_position
+// - end_position
+//
+// # auto impl
+//
+// - span
+// - range
+pub trait LocationTrait {
+    fn len_utf16(&self) -> usize;
+
+    fn offset(&self) -> usize;
+
+    fn span(&self) -> Span {
+        Span {
+            start: self.offset(),
+            end: self.offset() + self.len_utf16(),
+        }
+    }
+
+    fn start_position(&self) -> tower_lsp::lsp_types::Position;
+
+    fn end_position(&self) -> tower_lsp::lsp_types::Position;
+
+    fn range(&self) -> tower_lsp::lsp_types::Range {
+        tower_lsp::lsp_types::Range {
+            start: self.start_position(),
+            end: self.end_position(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     #[test]
@@ -553,7 +538,7 @@ mod test {
     fn range() {
         use tower_lsp::lsp_types::Position;
 
-        use crate::{document, Parser};
+        use crate::{Parser, grammer::document};
 
         let source = "* this is a heading\nThis";
         let mut p = Parser::new(source);
@@ -563,12 +548,12 @@ mod test {
         assert_eq!(0, res.loc().offsets());
         assert_eq!(Position::new(0, 1), res.start_position());
         assert_eq!(Position::new(1, 4), res.end_position());
-        // assert_eq!(
-        //     tower_lsp::lsp_types::Range::new(
-        //         tower_lsp::lsp_types::Position::new(0, 0),
-        //         tower_lsp::lsp_types::Position::new(1, 3)
-        //     ),
-        //     range
-        // )
+        assert_eq!(
+            tower_lsp::lsp_types::Range::new(
+                tower_lsp::lsp_types::Position::new(0, 1),
+                tower_lsp::lsp_types::Position::new(1, 4)
+            ),
+            res.range()
+        )
     }
 }

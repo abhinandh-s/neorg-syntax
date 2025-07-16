@@ -1,22 +1,21 @@
 ---
-source: src/parser.rs
-assertion_line: 801
+source: src/grammer/am.rs
 expression: output
 ---
-Italics Location { offsets: 0, line: 0, col: 1 }
+Italics [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
   Slash: "/" [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
   Error: "/" (unexpected /)
-  TextChunk Location { offsets: 2, line: 0, col: 6 }
+  TextChunk [ offsets: 2, position: ( line: 0, col: 6 ) ] ]
     Word: "this" [ offsets: 2, position: ( line: 0, col: 6 ) ] ]
     WhiteSpace: " " [ offsets: 6, position: ( line: 0, col: 7 ) ] ]
     Word: "is" [ offsets: 7, position: ( line: 0, col: 9 ) ] ]
     WhiteSpace: " " [ offsets: 9, position: ( line: 0, col: 10 ) ] ]
-  Bold Location { offsets: 10, line: 0, col: 11 }
+  Bold [ offsets: 10, position: ( line: 0, col: 11 ) ] ]
     Asterisk: "*" [ offsets: 10, position: ( line: 0, col: 11 ) ] ]
-    TextChunk Location { offsets: 11, line: 0, col: 15 }
+    TextChunk [ offsets: 11, position: ( line: 0, col: 15 ) ] ]
       Word: "bold" [ offsets: 11, position: ( line: 0, col: 15 ) ] ]
     Asterisk: "*" [ offsets: 15, position: ( line: 0, col: 16 ) ] ]
-  TextChunk Location { offsets: 16, line: 0, col: 17 }
+  TextChunk [ offsets: 16, position: ( line: 0, col: 17 ) ] ]
     WhiteSpace: " " [ offsets: 16, position: ( line: 0, col: 17 ) ] ]
   Error: "/" (unexpected /)
   Slash: "/" [ offsets: 18, position: ( line: 0, col: 19 ) ] ]

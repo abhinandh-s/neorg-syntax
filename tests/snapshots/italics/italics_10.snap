@@ -1,12 +1,11 @@
 ---
-source: src/parser.rs
-assertion_line: 793
+source: src/grammer/am.rs
 expression: output
 ---
-Italics Location { offsets: 0, line: 0, col: 1 }
+Italics [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
   Slash: "/" [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
   Error: "/" (unexpected /)
-  TextChunk Location { offsets: 2, line: 0, col: 6 }
+  TextChunk [ offsets: 2, position: ( line: 0, col: 6 ) ] ]
     Word: "this" [ offsets: 2, position: ( line: 0, col: 6 ) ] ]
   Error: "/" (unexpected /)
   Slash: "/" [ offsets: 7, position: ( line: 0, col: 8 ) ] ]

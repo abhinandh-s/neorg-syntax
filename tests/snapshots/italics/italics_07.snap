@@ -1,11 +1,10 @@
 ---
-source: src/parser.rs
-assertion_line: 769
+source: src/grammer/am.rs
 expression: output
 ---
-Italics Location { offsets: 0, line: 0, col: 1 }
+Italics [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
   Slash: "/" [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
-  TextChunk Location { offsets: 1, line: 0, col: 3 }
+  TextChunk [ offsets: 1, position: ( line: 0, col: 3 ) ] ]
     Word: "an" [ offsets: 1, position: ( line: 0, col: 3 ) ] ]
     WhiteSpace: " " [ offsets: 3, position: ( line: 0, col: 4 ) ] ]
     Word: "italics" [ offsets: 4, position: ( line: 0, col: 11 ) ] ]
@@ -22,14 +21,14 @@ Italics Location { offsets: 0, line: 0, col: 1 }
     WhiteSpace: " " [ offsets: 34, position: ( line: 0, col: 35 ) ] ]
     Word: "a" [ offsets: 35, position: ( line: 0, col: 36 ) ] ]
     WhiteSpace: " " [ offsets: 36, position: ( line: 0, col: 37 ) ] ]
-  Verbatim Location { offsets: 37, line: 0, col: 38 }
+  Verbatim [ offsets: 37, position: ( line: 0, col: 38 ) ] ]
     Pipe: "|" [ offsets: 37, position: ( line: 0, col: 38 ) ] ]
-    TextChunk Location { offsets: 38, line: 0, col: 39 }
+    TextChunk [ offsets: 38, position: ( line: 0, col: 39 ) ] ]
       WhiteSpace: " " [ offsets: 38, position: ( line: 0, col: 39 ) ] ]
       Word: "verbatim" [ offsets: 39, position: ( line: 0, col: 47 ) ] ]
       WhiteSpace: " " [ offsets: 47, position: ( line: 0, col: 48 ) ] ]
     Pipe: "|" [ offsets: 48, position: ( line: 0, col: 49 ) ] ]
-  TextChunk Location { offsets: 49, line: 0, col: 50 }
+  TextChunk [ offsets: 49, position: ( line: 0, col: 50 ) ] ]
     WhiteSpace: " " [ offsets: 49, position: ( line: 0, col: 50 ) ] ]
     Word: "chunk" [ offsets: 50, position: ( line: 0, col: 55 ) ] ]
     WhiteSpace: " " [ offsets: 55, position: ( line: 0, col: 56 ) ] ]

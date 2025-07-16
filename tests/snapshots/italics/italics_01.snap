@@ -1,11 +1,10 @@
 ---
-source: src/parser.rs
-assertion_line: 745
+source: src/grammer/am.rs
 expression: output
 ---
-Italics Location { offsets: 0, line: 0, col: 1 }
+Italics [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
   Slash: "/" [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
-  TextChunk Location { offsets: 1, line: 0, col: 3 }
+  TextChunk [ offsets: 1, position: ( line: 0, col: 3 ) ] ]
     Word: "an" [ offsets: 1, position: ( line: 0, col: 3 ) ] ]
     WhiteSpace: " " [ offsets: 3, position: ( line: 0, col: 4 ) ] ]
     Word: "italics" [ offsets: 4, position: ( line: 0, col: 11 ) ] ]
@@ -13,5 +12,4 @@ Italics Location { offsets: 0, line: 0, col: 1 }
     Word: "text" [ offsets: 12, position: ( line: 0, col: 16 ) ] ]
     WhiteSpace: " " [ offsets: 16, position: ( line: 0, col: 17 ) ] ]
     Word: "chunk" [ offsets: 17, position: ( line: 0, col: 22 ) ] ]
-    Error: " " (unexpected WhiteSpace)
-  Slash: "/" [ offsets: 23, position: ( line: 0, col: 24 ) ] ]
+  Slash: "/" [ offsets: 22, position: ( line: 0, col: 23 ) ] ]

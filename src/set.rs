@@ -96,8 +96,8 @@ pub const PUNCTUATIONS: SyntaxSet = syntax_set!(
 /// - TODO: `inline code` (disables any nested markup - verbatim)
 /// - TODO: $f(x) = y$ (verbatim)
 /// - &variable& (verbatim)
-/// 
-/// -- NOTE: no `Pipe` here 
+///
+/// -- NOTE: no `Pipe` here
 pub const ATTACHED_MODIFIERS: SyntaxSet = syntax_set!(
     Asterisk,
     Slash,

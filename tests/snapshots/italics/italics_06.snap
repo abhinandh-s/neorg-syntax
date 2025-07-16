@@ -1,11 +1,10 @@
 ---
-source: src/parser.rs
-assertion_line: 761
+source: src/grammer/am.rs
 expression: output
 ---
-Italics Location { offsets: 0, line: 0, col: 1 }
+Italics [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
   Slash: "/" [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
-  TextChunk Location { offsets: 1, line: 0, col: 3 }
+  TextChunk [ offsets: 1, position: ( line: 0, col: 3 ) ] ]
     Word: "an" [ offsets: 1, position: ( line: 0, col: 3 ) ] ]
     WhiteSpace: " " [ offsets: 3, position: ( line: 0, col: 4 ) ] ]
     Word: "italics" [ offsets: 4, position: ( line: 0, col: 11 ) ] ]

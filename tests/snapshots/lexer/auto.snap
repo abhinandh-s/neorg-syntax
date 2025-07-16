@@ -1,38 +1,8 @@
 ---
 source: src/lex.rs
-expression: spanned
+expression: tokens
 ---
 [
-    Spanned {
-        item: WORD: "this"@4,
-        span: [ span: 0..4 ],
-    },
-    Spanned {
-        item: WHITE_SPACE: " "@1,
-        span: [ span: 4..5 ],
-    },
-    Spanned {
-        item: WORD: "is"@2,
-        span: [ span: 5..7 ],
-    },
-    Spanned {
-        item: WHITE_SPACE: " "@1,
-        span: [ span: 7..8 ],
-    },
-    Spanned {
-        item: WORD: "a"@1,
-        span: [ span: 8..9 ],
-    },
-    Spanned {
-        item: WHITE_SPACE: " "@1,
-        span: [ span: 9..10 ],
-    },
-    Spanned {
-        item: WORD: "test"@4,
-        span: [ span: 10..14 ],
-    },
-    Spanned {
-        item: EOF: "\0"@1,
-        span: [ span: 14..15 ],
-    },
+    WORD: "🙂⚠\u{fe0f}©®€🤯⌘"@10,
+    EOF: "\0"@1,
 ]

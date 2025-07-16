@@ -731,18 +731,14 @@ fn lex_white_space(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
 
 #[allow(dead_code)]
 const M_DETACHED_MODIFIERS: [char; 12] = [
-        '*',  // Headings
-        '-',  // Unordered Lists
-        '>',  // Quotes
-        '%',  // Attributes
-        '=',
-        '~',  // Ordered Lists
-        '$',  // Definitions
-        '_',
-        '^',  // Footnotes
-        '&',
-        '<',
-        ':',  // Table cells
+    '*', // Headings
+    '-', // Unordered Lists
+    '>', // Quotes
+    '%', // Attributes
+    '=', '~', // Ordered Lists
+    '$', // Definitions
+    '_', '^', // Footnotes
+    '&', '<', ':', // Table cells
 ];
 
 #[allow(dead_code, unused)]

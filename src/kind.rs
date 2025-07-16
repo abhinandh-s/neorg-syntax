@@ -7,6 +7,7 @@ use crate::kind_to_char;
 #[repr(u8)]
 pub enum SyntaxKind {
     TombStone,
+    HorizontalRule,
     LineEnding,    // `\n`, `\r`, `\u{000C}`
     EscapedChar,   // neorg specific chars can be escaped
     Comment,       // %this is inline comment%, there is also an another way
@@ -68,9 +69,9 @@ pub enum SyntaxKind {
     Paragraph,   // group of Paragraph Segments
     ParaSegment, // Paragraph Segments
     ParaBreak,
-    TextChunk,   // contains `Word`s and `WhiteSpace` only
-    Verbatim,    // raw text
-    Maths,       // $ contents inside this $
+    TextChunk, // contains `Word`s and `WhiteSpace` only
+    Verbatim,  // raw text
+    Maths,     // $ contents inside this $
     __LAST,
     UnderLine,
     InlineCode,
