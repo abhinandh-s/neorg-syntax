@@ -519,10 +519,13 @@ pub trait LocationTrait {
         }
     }
 
+    #[cfg(feature = "tower-lsp")]
     fn start_position(&self) -> tower_lsp::lsp_types::Position;
 
+    #[cfg(feature = "tower-lsp")]
     fn end_position(&self) -> tower_lsp::lsp_types::Position;
 
+    #[cfg(feature = "tower-lsp")]
     fn range(&self) -> tower_lsp::lsp_types::Range {
         tower_lsp::lsp_types::Range {
             start: self.start_position(),
