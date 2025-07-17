@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::sync::Arc;
 
 use crate::{Location, Span, SyntaxKind, Token, token};
@@ -35,6 +36,50 @@ enum Repr {
     Leaf(LeafNode),
     Inner(Arc<InnerNode>),
     Error(Arc<ErrorNode>),
+}
+
+pub fn get_errors(node: SyntaxNode) -> Vec<SyntaxNode> {
+    let mut vec = Vec::new();
+    get_error(node, &mut vec);
+    vec
+}
+
+#[cfg(feature = "tower-lsp")]
+pub fn get_diagnostics(node: SyntaxNode) -> Vec<tower_lsp::lsp_types::Diagnostic> {
+    let mut vec = Vec::new();
+    get_diagnostic(node, &mut vec);
+    vec
+}
+
+#[cfg(feature = "tower-lsp")]
+pub(crate) fn get_diagnostic(node: SyntaxNode, result: &mut Vec<tower_lsp::lsp_types::Diagnostic>) {
+    match node.0 {
+        Repr::Leaf(_) => {}
+        Repr::Inner(inner_node) => {
+            for i in &inner_node.children {
+                get_diagnostic(i.clone(), result);
+            }
+        }
+        Repr::Error(error_node) => {
+            let diagnostic = tower_lsp::lsp_types::Diagnostic::new_simple(error_node.range(), error_node.message().to_owned());
+            result.push(diagnostic)
+        }
+    }
+}
+
+fn get_error(node: SyntaxNode, result: &mut Vec<SyntaxNode>) {
+    match node.0 {
+        Repr::Leaf(_) => {}
+        Repr::Inner(inner_node) => {
+            for i in &inner_node.children {
+                get_error(i.clone(), result);
+            }
+        }
+        Repr::Error(error_node) => {
+            let syn: SyntaxNode = error_node.deref().to_owned().into();
+            result.push(syn)
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -193,8 +238,9 @@ impl SyntaxNode {
     /// Convert the child to an error, if it isn't already one.
     pub(super) fn convert_to_error(&mut self, message: impl Into<String>) {
         if !self.kind().is_error() {
+            let loc = self.loc();
             let text = std::mem::take(self).into_text();
-            *self = SyntaxNode::error(SyntaxError::new(message), text);
+            *self = SyntaxNode::error(SyntaxError::new(message, loc), text);
         }
     }
     /// Convert the child to an error stating that the given thing was
@@ -396,6 +442,10 @@ impl ErrorNode {
     pub fn character(&self) -> u32 {
         self.error.loc.character()
     }
+
+    pub fn message(&self) -> &str {
+        self.error.message()
+    }
 }
 
 impl LocationTrait for ErrorNode {
@@ -443,21 +493,22 @@ pub struct SyntaxError {
     pub(crate) hints: Vec<String>,
 }
 
+#[allow(dead_code)]
 impl SyntaxError {
     /// Create a new detached syntax error.
-    pub fn new(message: impl Into<String>) -> Self {
+    pub(crate) fn new(message: impl Into<String>, loc: Location) -> Self {
         Self {
-            loc: Location::default(),
+            loc,
             message: message.into(),
             hints: vec![],
         }
     }
 
-    pub fn message(&self) -> &str {
+    pub(crate) fn message(&self) -> &str {
         &self.message
     }
 
-    pub fn hints(&self) -> &[String] {
+    pub(crate) fn hints(&self) -> &[String] {
         &self.hints
     }
 }
@@ -483,8 +534,8 @@ impl SyntaxNode {
                 }
                 Repr::Error(err) => {
                     output.push_str(&format!(
-                        "{padding}Error: {:?} ({})\n",
-                        err.text, err.error.message
+                        "{padding}Error: {:?} ({}) {}\n",
+                        err.text, err.error.message, err.error.loc
                     ));
                 }
             }

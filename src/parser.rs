@@ -71,6 +71,12 @@ impl Parser {
         self.eat();
     }
 
+    #[track_caller]
+    pub(crate) fn get_current(&self) -> Option<SyntaxKind> {
+        self.tokens.get(self.cursor).map(|t| t.kind())
+    }
+
+    #[track_caller]
     pub(crate) fn current(&self) -> SyntaxKind {
         self.tokens[self.cursor].kind()
     }
@@ -83,6 +89,7 @@ impl Parser {
         self.tokens.get(self.cursor - 1).map(|f| f.kind())
     }
 
+    #[track_caller]
     pub(crate) fn eat(&mut self) {
         // Token `foobar`
         //
@@ -95,13 +102,14 @@ impl Parser {
         //
         // line won't get updated here. [see eat_line_ending]
         let start_offset = self.loc.offsets();
+        let start_char = self.loc.character();
 
         let current = self.tokens[self.cursor].clone();
         self.loc.bump_col(current.len() as u32);
         self.loc.bump_offset(current.len());
         let node = SyntaxNode::leaf(
             current.clone(),
-            Location::new(start_offset, self.loc.line(), self.loc.character()),
+            Location::new(start_offset, self.loc.line(), start_char),
         );
         self.nodes.push(node);
         self.cursor += 1;
@@ -137,12 +145,8 @@ impl Parser {
         if at {
             self.eat();
         } else {
-            // FIX: eat?
-            //  self.nodes().push(SyntaxNode::error(
-            //      SyntaxError::new(format!("expected {}, found {}", kind, self.current().text())),
-            //      self.current().text(),
-            //  ));
-            //  self.eat();
+            let node = self.eat_and_get();
+            node.convert_to_error(format!("expected `{}`", kind.text()));
         }
         at
     }
@@ -171,7 +175,7 @@ impl Parser {
     /// Produce an error that the given `thing` was expected at the position
     /// of the marker `m`.
     pub(crate) fn expected_at(&mut self, m: Marker, thing: &str) {
-        let error = SyntaxNode::error(SyntaxError::new(format!("expected {thing}")), "");
+        let error = SyntaxNode::error(SyntaxError::new(format!("expected {thing}"), self.loc), "");
         self.nodes.insert(m.0, error);
     }
 
@@ -183,6 +187,7 @@ impl Parser {
         set.contains(self.current())
     }
 
+    #[track_caller]
     pub(crate) fn is_at_eof(&self) -> bool {
         self.current() == T![Eof]
     }

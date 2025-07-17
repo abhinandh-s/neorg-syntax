@@ -1,1 +1,3 @@
-# neorg-syntax
+# neorg-syntax 
+
+A parser for neorg (wip)

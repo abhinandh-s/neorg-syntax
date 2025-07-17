@@ -19,6 +19,7 @@ document => paragraph_break (x)
             | strong_paragraph_delimiter
             | paragraph (x)
 "]
+#[track_caller]
 pub fn document(p: &mut Parser) -> SyntaxNode {
     let m = p.start();
 

@@ -7,10 +7,18 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = include_str!("../examples/tests/00.norg");
+    let source = "
+
+
+
+>this";
     let mut p = Parser::new(source);
 
-    let cst = document(&mut p).display();
+    let cst = document(&mut p);
+    println!("{}", cst.display());
 
-    println!("{cst}");
+    let err = crate::get_errors(cst);
+    for i in err {
+        println!("{:?}", i.range());
+    }
 }
