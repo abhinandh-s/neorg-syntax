@@ -61,7 +61,27 @@ pub(crate) fn get_diagnostic(node: SyntaxNode, result: &mut Vec<tower_lsp::lsp_t
             }
         }
         Repr::Error(error_node) => {
-            let diagnostic = tower_lsp::lsp_types::Diagnostic::new_simple(error_node.range(), error_node.message().to_owned());
+            use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
+
+            let diagnostic = Diagnostic {
+                range: error_node.range(),
+                message: error_node.message().to_owned(),
+                severity: Some(DiagnosticSeverity::ERROR),
+                source: Some("neorg-analyzer".to_owned()),
+                ..Default::default()
+            };
+            if !error_node.error.hints.is_empty() {
+                for msg in &error_node.error.hints {
+                    let diagnostic = Diagnostic {
+                        range: error_node.range(),
+                        message: msg.to_owned(),
+                        severity: Some(DiagnosticSeverity::HINT),
+                        source: Some("neorg-analyzer".to_owned()),
+                        ..Default::default()
+                    };
+                    result.push(diagnostic)
+                }
+            }
             result.push(diagnostic)
         }
     }
