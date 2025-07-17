@@ -2,10 +2,10 @@
 source: src/grammer/am.rs
 expression: output
 ---
-Italics [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
-  Slash: "/" [ offsets: 0, position: ( line: 0, col: 1 ) ] ]
-  Error: "/" (unexpected /)
-  TextChunk [ offsets: 2, position: ( line: 0, col: 6 ) ] ]
-    Word: "this" [ offsets: 2, position: ( line: 0, col: 6 ) ] ]
-  Error: "/" (unexpected /)
-  Slash: "/" [ offsets: 7, position: ( line: 0, col: 8 ) ] ]
+Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+  Slash: "/" [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+  Error: "/" (unexpected /) [ offsets: 1, position: ( line: 0, col: 1 ) ] ]
+  TextChunk [ offsets: 2, position: ( line: 0, col: 2 ) ] ]
+    Word: "this" [ offsets: 2, position: ( line: 0, col: 2 ) ] ]
+  Error: "/" (unexpected /) [ offsets: 6, position: ( line: 0, col: 6 ) ] ]
+  Slash: "/" [ offsets: 7, position: ( line: 0, col: 7 ) ] ]
