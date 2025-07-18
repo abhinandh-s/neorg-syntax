@@ -87,6 +87,38 @@ pub(crate) fn get_diagnostic(node: SyntaxNode, result: &mut Vec<tower_lsp::lsp_t
     }
 }
 
+pub fn get_kinds(kind: SyntaxKind, node: SyntaxNode) -> Vec<SyntaxNode> {
+    let mut vec = Vec::new();
+    get_by_kind(kind, node, &mut vec);
+    vec
+}
+
+fn get_by_kind(kind: SyntaxKind, node: SyntaxNode, result: &mut Vec<SyntaxNode>) {
+    match node.0 {
+        Repr::Leaf(leaf) => {
+            if leaf.kind() == kind {
+                result.push(leaf.into());
+            }
+        }
+        Repr::Inner(inner_node) => {
+            if inner_node.kind() == kind {
+                let syn: SyntaxNode = inner_node.deref().to_owned().into();
+                result.push(syn);
+
+            }
+            for i in &inner_node.children {
+                get_by_kind(kind, i.clone(), result);
+            }
+        }
+        Repr::Error(error_node) => {
+            if kind == SyntaxKind::Error {
+                let syn: SyntaxNode = error_node.deref().to_owned().into();
+                result.push(syn)
+            }
+        }
+    }
+}
+
 fn get_error(node: SyntaxNode, result: &mut Vec<SyntaxNode>) {
     match node.0 {
         Repr::Leaf(_) => {}

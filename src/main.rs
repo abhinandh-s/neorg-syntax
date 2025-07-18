@@ -19,6 +19,6 @@ fn main() {
 
     let err = crate::get_errors(cst);
     for i in err {
-        println!("{:?}", i);
+        println!("{i:?}");
     }
 }
