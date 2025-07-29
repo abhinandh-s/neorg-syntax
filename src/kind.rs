@@ -6,9 +6,14 @@ use crate::kind_to_char;
 #[derive(Debug, Display, PartialEq, Eq, Clone, Copy, Hash)]
 #[repr(u8)]
 pub enum SyntaxKind {
-    TombStone,
+    TombStone = 0,
+    Eof = 1,
+    Error = 2,         // `=`
+    LineEnding = 3,    // `\n`, `\r`, `\u{000C}`
+    ParaBreak = 4,
+    Tab = 5,           // `\t`
+    Word,          // a word
     HorizontalRule,
-    LineEnding,    // `\n`, `\r`, `\u{000C}`
     EscapedChar,   // neorg specific chars can be escaped
     Comment,       // %this is inline comment%, there is also an another way
     Spoiler,       // !this is a spoiler!
@@ -35,8 +40,6 @@ pub enum SyntaxKind {
     Backtick,      // `\``
     Hyphen,        // `-`
     StrikeThrough, // `-this is strike through-`
-    Tab,           // `\t`
-    Word,          // a word
     WhiteSpace,    // ` `
     KwDocument,    // `@document`
     KwMeta,        // `@document.meta`
@@ -51,12 +54,10 @@ pub enum SyntaxKind {
     GreaterThan,   // `>`
     LessThan,      // `<`
     Quote,         // > this is a quote
-    Error,         // `=`
     Italics,       // `/this is Italics/`
     Heading,       // `** this is heading`
     Bold,
     HeadingMarker,
-    Eof,
     Semicolon,
     Colon,
     Equal,
@@ -68,11 +69,9 @@ pub enum SyntaxKind {
     Emph,
     Paragraph,   // group of Paragraph Segments
     ParaSegment, // Paragraph Segments
-    ParaBreak,
     TextChunk, // contains `Word`s and `WhiteSpace` only
     Verbatim,  // raw text
     Maths,     // $ contents inside this $
-    __LAST,
     UnderLine,
     InlineCode,
     NullModifier,
@@ -81,6 +80,7 @@ pub enum SyntaxKind {
     LinkLocation,
     LinkDescription,
     Link,
+    __LAST,
 }
 
 impl SyntaxKind {

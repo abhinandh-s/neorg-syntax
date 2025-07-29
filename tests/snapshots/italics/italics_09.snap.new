@@ -1,0 +1,12 @@
+---
+source: src/grammer/am.rs
+assertion_line: 151
+expression: output
+---
+Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+  Slash: "/" [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+  TextChunk [ offsets: 1, position: ( line: 0, col: 1 ) ] ]
+    Word: "ailse u dta " [ offsets: 1, position: ( line: 0, col: 1 ) ] ]
+    Word: "vbi" [ offsets: 13, position: ( line: 0, col: 13 ) ] ]
+    Word: "cnii" [ offsets: 16, position: ( line: 0, col: 16 ) ] ]
+  Slash: "/" [ offsets: 20, position: ( line: 0, col: 20 ) ] ]

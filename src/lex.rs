@@ -423,7 +423,7 @@ impl<'a> Lexer<'a> {
                 }
             }
 
-            if let Some(tok) = lex_line_ending(&mut chars) {
+            if let Some(tok) = lex_line_or_para_ending(&mut chars) {
                 self.tokens.push(tok);
                 continue;
             }
@@ -530,16 +530,22 @@ fn lex_text(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
     }
     // -- NOTE: we might need lex_verbatim function
 
-    // no assestion and return None as we want everything to fall here
+    // no assertion and return None as we want everything to fall here
 
     let mut text = String::new();
     let mut len = 0;
+
     while let Some(char) = chars.peek() {
-        if char.is_neorg_char() {
+        let ch = *char;
+        //   %this are some text
+        //   ^ at neorg char
+        //   %this are some text
+        //    ^ is not a neorg char
+        if chars.nth(1).is_some_and(|ch| ch.is_neorg_char()) && ch.is_neorg_char() {
             break;
         }
-        text.push(*char);
-        len += char.len_utf16();
+        text.push(ch);
+        len += ch.len_utf16();
         chars.next();
     }
 
@@ -634,33 +640,73 @@ impl NeorgChar for char {
 // | Windows          | \r\n        |
 // | Classic Mac      | \r          |
 //
-fn lex_line_ending(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
+fn lex_line_or_para_ending(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
     let char = *chars.peek()?;
-
     if !char.is_line_ending() {
         return None;
     }
 
+    let mut n: u8 = 3; // SyntaxKind::LineEnding & 4 = ParaBreak
+    let mut text = String::from(char);
     let mut len = char.len_utf16();
+
     chars.next();
     if char == '\r' {
         if let Some(next_char) = chars.peek() {
             if *next_char == '\n' {
                 len += next_char.len_utf16();
+                text.push(*next_char);
                 chars.next();
-                return Some(token!(SyntaxKind::LineEnding, "\r\n", len));
             }
         }
     }
-    Some(token!(SyntaxKind::LineEnding, char, len))
+    // LineEnding logic ends here
+    // consume may whitespace and tab
+    while let Some(char) = chars.peek() {
+        if char.is_zs_whitespace() || *char == '\t' {
+            len += char.len_utf16();
+            text.push(*char);
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    // ParaBreak logic
+    let char = *chars.peek()?;
+    if char.is_line_ending() {
+        n = 4;
+        text.push(char);
+        chars.next();
+        if char == '\r' {
+            if let Some(next_char) = chars.peek() {
+                if *next_char == '\n' {
+                    len += next_char.len_utf16();
+                    text.push(*next_char);
+                    chars.next();
+                }
+            }
+        }
+    }
+    // ParaBreak logic ends here
+
+    debug_assert!(SyntaxKind::__LAST as u8 > n); // bound check 
+    let kind: SyntaxKind = unsafe { std::mem::transmute(n) }; // safe
+    Some(token!(kind, text, len))
 }
 
 #[test]
-fn test_lex_line_endings() {
+fn test_lex_line_or_para_endings() {
     fn check(input: &str, expected: &str) {
         let mut chars = input.chars().peekable();
-        let token = lex_line_ending(&mut chars).expect("Expected line ending");
+        let token = lex_line_or_para_ending(&mut chars).expect("Expected line ending");
         assert_eq!(token.text(), expected);
+        assert_eq!(token.kind(), T![LineEnding]);
+    }
+    fn p_check(input: &str, expected: &str) {
+        let mut chars = input.chars().peekable();
+        let token = lex_line_or_para_ending(&mut chars).expect("Expected line ending");
+        assert_eq!(token.text(), expected);
+        assert_eq!(token.kind(), T![ParaBreak]);
     }
 
     // U+000A (Line Feed)
@@ -675,14 +721,12 @@ fn test_lex_line_endings() {
     // U+000D U+000A (CRLF)
     check("\r\nnext", "\r\n");
 
-    // Invalid: No line ending
-    let mut it = "hello".chars().peekable();
-    assert!(lex_line_ending(&mut it).is_none());
-
-    // Only \r followed by EOF — should not panic
-    let mut it = "\r".chars().peekable();
-    let tok = lex_line_ending(&mut it).unwrap();
-    assert_eq!(tok.text(), "\r");
+    // whitespace
+    p_check("\r\n \nnext", "\r\n \n");
+    // tab
+    p_check("\r\n      \nnext", "\r\n      \n");
+    p_check("\r\n      \r\nnext", "\r\n      \r\n");
+    p_check("\u{000C}  \u{000C}next", "\u{000C}  \u{000C}");
 }
 
 /// # Whitespace
