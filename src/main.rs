@@ -7,11 +7,7 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = "
-
-
-
->this";
+    let source = include_str!("../examples/tests/implemented.norg");
     let mut p = Parser::new(source);
 
     let cst = document(&mut p);

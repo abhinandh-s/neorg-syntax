@@ -104,7 +104,6 @@ fn get_by_kind(kind: SyntaxKind, node: SyntaxNode, result: &mut Vec<SyntaxNode>)
             if inner_node.kind() == kind {
                 let syn: SyntaxNode = inner_node.deref().to_owned().into();
                 result.push(syn);
-
             }
             for i in &inner_node.children {
                 get_by_kind(kind, i.clone(), result);

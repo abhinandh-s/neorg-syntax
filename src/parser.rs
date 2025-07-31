@@ -148,7 +148,11 @@ impl Parser {
             let prev = self.prev().map_or("".to_owned(), |f| f.text());
             let node = self.eat_and_get();
             node.convert_to_error(format!("expected `{}`", kind.text()));
-            node.hint(format!("consider using a `{}` after `{}`", kind.text(), prev));
+            node.hint(format!(
+                "consider using a `{}` after `{}`",
+                kind.text(),
+                prev
+            ));
         }
         at
     }

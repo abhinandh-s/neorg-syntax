@@ -76,6 +76,80 @@ fn parse_verbatim(p: &mut Parser) {
     p.wrap(m, SyntaxKind::Verbatim);
 }
 
+fn parse_subscript(_: &mut Parser) {
+    todo!()
+}
+
+fn parse_superscript(_: &mut Parser) {
+    todo!()
+}
+
+fn parse_spoiler(_: &mut Parser) {
+    todo!()
+}
+
+fn parse_underline(_: &mut Parser) {
+    todo!()
+}
+
+fn parse_italics(p: &mut Parser) {
+    let m = p.start();
+    p.bump(T!['/']);
+    if p.at(T![Slash]) {
+        p.unexpected();
+    }
+    if p.at(T![WhiteSpace]) {
+        p.unexpected();
+    }
+
+    time_bound_while!(!p.at(T![Eof]), {
+        if p.at(T![Slash]) {
+            if p.next()
+                .filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k))
+                .is_some()
+            {
+                break;
+            } else {
+                p.unexpected();
+                continue;
+            }
+        } else {
+            parse_attached_modifiers(p);
+        }
+    });
+    p.expect_closing_delimiter(m, T!['/']);
+    p.wrap(m, SyntaxKind::Italics);
+}
+
+fn parse_bold(p: &mut Parser) {
+    let m = p.start();
+    let kind = T![Asterisk];
+    p.bump(kind);
+    if p.at(kind) {
+        p.unexpected();
+    }
+    if p.at(T![WhiteSpace]) {
+        p.unexpected();
+    }
+
+    time_bound_while!(!p.at(T![Eof]), {
+        if p.at(kind) {
+            if p.next()
+                .filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k))
+                .is_some()
+            {
+                break;
+            } else {
+                p.unexpected();
+                continue;
+            }
+        } else {
+            parse_attached_modifiers(p);
+        }
+    });
+    p.expect_closing_delimiter(m, kind);
+    p.wrap(m, SyntaxKind::Bold);
+}
 
 assert_tree!(
     // [case:1/9] perfect bold

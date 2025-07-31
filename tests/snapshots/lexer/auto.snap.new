@@ -1,9 +1,0 @@
----
-source: src/lex.rs
-assertion_line: 808
-expression: tokens
----
-[
-    WORD: "🙂©🤯"@5,
-    EOF: "\0"@1,
-]

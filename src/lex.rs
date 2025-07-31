@@ -443,12 +443,11 @@ impl<'a> Lexer<'a> {
                 self.tokens.push(tok);
                 continue;
             }
-
-            chars.next();
         }
 
         self.tokens
             .push(token!(SyntaxKind::Eof, '\0', '\0'.len_utf16()));
+        self.tokens.clone().iter().for_each(|t| println!("{t}"));
         std::mem::take(&mut self.tokens)
     }
 }
@@ -528,25 +527,18 @@ fn lex_text(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
     if char.is_neorg_char() {
         panic!("This is impossible!");
     }
-    // -- NOTE: we might need lex_verbatim function
-
-    // no assertion and return None as we want everything to fall here
-
     let mut text = String::new();
     let mut len = 0;
 
-    while let Some(char) = chars.peek() {
-        let ch = *char;
-        //   %this are some text
-        //   ^ at neorg char
-        //   %this are some text
-        //    ^ is not a neorg char
-        if chars.nth(1).is_some_and(|ch| ch.is_neorg_char()) && ch.is_neorg_char() {
-            break;
+    while let Some(&char) = chars.peek() {
+        match char.is_neorg_char() {
+            true => break,
+            false => {
+                len += char.len_utf16();
+                text.push(char);
+                chars.next();
+            }
         }
-        text.push(ch);
-        len += ch.len_utf16();
-        chars.next();
     }
 
     Some(token!(SyntaxKind::Word, text, len))
@@ -642,66 +634,84 @@ impl NeorgChar for char {
 //
 fn lex_line_or_para_ending(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
     let char = *chars.peek()?;
+
     if !char.is_line_ending() {
         return None;
     }
 
-    let mut n: u8 = 3; // SyntaxKind::LineEnding & 4 = ParaBreak
-    let mut text = String::from(char);
-    let mut len = char.len_utf16();
+    let mut kind = SyntaxKind::LineEnding;
+    let mut text = String::new();
+    let mut len = 0;
 
-    chars.next();
-    if char == '\r' {
-        if let Some(next_char) = chars.peek() {
-            if *next_char == '\n' {
-                len += next_char.len_utf16();
-                text.push(*next_char);
-                chars.next();
+    match line_ending(chars, &mut text, &mut len) {
+        true => {
+            if line_ending(chars, &mut text, &mut len) {
+                kind = SyntaxKind::ParaBreak;
             }
         }
+        false => return None,
     }
-    // LineEnding logic ends here
-    // consume may whitespace and tab
-    while let Some(char) = chars.peek() {
-        if char.is_zs_whitespace() || *char == '\t' {
-            len += char.len_utf16();
-            text.push(*char);
+    Some(token!(kind, text, len))
+}
+
+fn line_ending(chars: &mut Peekable<Chars<'_>>, text: &mut String, len: &mut usize) -> bool {
+    let Some(&ch) = chars.peek() else {
+        return false;
+    };
+    let mut eat_once = |c: char| {
+        *len += c.len_utf16();
+        text.push(c);
+        chars.next();
+    };
+    match ch {
+        '\u{000A}' => {
+            eat_once(ch);
+            eat_many_for_line_ending(chars, text, len);
+            true
+        }
+        '\u{000C}' => {
+            eat_once(ch);
+            eat_many_for_line_ending(chars, text, len);
+            true
+        }
+        '\u{000D}' => {
+            eat_once(ch);
+            if let Some(next_char) = chars.peek() {
+                if *next_char == '\n' {
+                    *len += next_char.len_utf16();
+                    text.push(*next_char);
+                    chars.next();
+                }
+                eat_many_for_line_ending(chars, text, len);
+            }
+            true
+        }
+        _ => false,
+    }
+}
+
+fn eat_many_for_line_ending(chars: &mut Peekable<Chars<'_>>, text: &mut String, len: &mut usize) {
+    while let Some(ch) = chars.peek() {
+        if ch.is_zs_whitespace() || *ch == '\t' {
+            *len += ch.len_utf16();
+            text.push(*ch);
             chars.next();
         } else {
             break;
         }
     }
-    // ParaBreak logic
-    let char = *chars.peek()?;
-    if char.is_line_ending() {
-        n = 4;
-        text.push(char);
-        chars.next();
-        if char == '\r' {
-            if let Some(next_char) = chars.peek() {
-                if *next_char == '\n' {
-                    len += next_char.len_utf16();
-                    text.push(*next_char);
-                    chars.next();
-                }
-            }
-        }
-    }
-    // ParaBreak logic ends here
-
-    debug_assert!(SyntaxKind::__LAST as u8 > n); // bound check 
-    let kind: SyntaxKind = unsafe { std::mem::transmute(n) }; // safe
-    Some(token!(kind, text, len))
 }
 
 #[test]
 fn test_lex_line_or_para_endings() {
+    #[track_caller]
     fn check(input: &str, expected: &str) {
         let mut chars = input.chars().peekable();
         let token = lex_line_or_para_ending(&mut chars).expect("Expected line ending");
         assert_eq!(token.text(), expected);
         assert_eq!(token.kind(), T![LineEnding]);
     }
+    #[track_caller]
     fn p_check(input: &str, expected: &str) {
         let mut chars = input.chars().peekable();
         let token = lex_line_or_para_ending(&mut chars).expect("Expected line ending");
@@ -805,6 +815,7 @@ fn auto() {
         let input = "🙂⚠️©®€🤯⌘";
         let mut binding = Lexer::new(input);
         let tokens = binding.lex();
+        assert_eq!(input.encode_utf16().count(), 10);
         insta::assert_debug_snapshot!(tokens);
     });
 }
@@ -849,6 +860,7 @@ mod test {
             if tok.kind() == SyntaxKind::Eof {
                 break;
             }
+            assert_eq!(input.encode_utf16().count(), 10);
             assert_eq!(tok.kind(), SyntaxKind::Word);
         }
     }

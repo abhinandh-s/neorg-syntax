@@ -8,7 +8,7 @@ use am::*;
 mod dm;
 
 #[doc = "
-document => paragraph_break (x)
+document => paragraph_break (x) // lexer will handle both line_break & paragraph_break
             | line_break (x)
             | heading (x)
             | nestable_detached_modifier
@@ -27,11 +27,6 @@ pub fn document(p: &mut Parser) -> SyntaxNode {
         p.skip_whitespace();
 
         match p.current() {
-            T![LineEnding] => {
-                let _ = para_break(p);
-                // we must eat every WhiteSpace and Tab after newline before making any assumptions
-                p.skip_whitespace();
-            }
             T![Asterisk] => heading(p),
             T![Hyphen] => horizontal_line(p),
             T![GreaterThan] => quote(p), // comes under nestable_detached_modifier
@@ -200,8 +195,8 @@ fn paragraph_segment(p: &mut Parser) {
     while !p.at_set(syntax_set!(Eof, LineEnding)) {
         match p.current() {
             SyntaxKind::LCurly => link(p),
-            other_kind => {
-                if ATTACHED_MODIFIERS.contains(other_kind) {
+            other => {
+                if ATTACHED_MODIFIERS.contains(other) {
                     parse_attached_modifiers(p);
                 } else {
                     p.eat();
@@ -209,45 +204,21 @@ fn paragraph_segment(p: &mut Parser) {
             }
         }
     }
+    p.bump(T![LineEnding]);
     p.wrap(m, T![ParaSegment]);
 }
 
 fn paragraph(p: &mut Parser) {
     let m = p.start();
     while !p.is_at_eof() {
-        if p.current() == SyntaxKind::LineEnding {
-            if para_break(p) == SyntaxKind::ParaBreak {
-                break;
-            }
+        if p.current() == SyntaxKind::ParaBreak {
+            p.bump(T![ParaBreak]);
+            break;
         } else {
             paragraph_segment(p);
         }
     }
     p.wrap(m, SyntaxKind::Paragraph);
-}
-
-// every newline ('\n') a.k.a `LineEnding` must only be parsed with para_break
-// cuz we reset span here [ line += 1 && col = 0 ] via ['eat_line_ending']
-fn para_break(p: &mut Parser) -> SyntaxKind {
-    //
-    // ParaBreak = LineEnding + LineEnding | LineEnding + WhiteSpace + LineEnding
-    //
-    // checks if this is a ParaBreak else return LineEnding
-    let m = p.start();
-    p.eat_line_ending();
-    if let Some(k) = p.next() {
-        if p.at(SyntaxKind::LineEnding) {
-            p.eat_line_ending();
-            p.wrap(m, SyntaxKind::ParaBreak);
-            return SyntaxKind::ParaBreak;
-        } else if p.at(SyntaxKind::WhiteSpace) && k == SyntaxKind::LineEnding {
-            p.eat();
-            p.eat_line_ending();
-            p.wrap(m, SyntaxKind::ParaBreak);
-            return SyntaxKind::ParaBreak;
-        }
-    }
-    SyntaxKind::LineEnding
 }
 
 fn quote(p: &mut Parser) {
@@ -291,81 +262,6 @@ fn heading(p: &mut Parser) {
     p.expect(T![WhiteSpace]);
     paragraph_segment(p);
     p.wrap(m, SyntaxKind::Heading);
-}
-
-fn parse_subscript(_: &mut Parser) {
-    todo!()
-}
-
-fn parse_superscript(_: &mut Parser) {
-    todo!()
-}
-
-fn parse_spoiler(_: &mut Parser) {
-    todo!()
-}
-
-fn parse_underline(_: &mut Parser) {
-    todo!()
-}
-
-fn parse_italics(p: &mut Parser) {
-    let m = p.start();
-    p.bump(T!['/']);
-    if p.at(T![Slash]) {
-        p.unexpected();
-    }
-    if p.at(T![WhiteSpace]) {
-        p.unexpected();
-    }
-
-    time_bound_while!(!p.at(T![Eof]), {
-        if p.at(T![Slash]) {
-            if p.next()
-                .filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k))
-                .is_some()
-            {
-                break;
-            } else {
-                p.unexpected();
-                continue;
-            }
-        } else {
-            parse_attached_modifiers(p);
-        }
-    });
-    p.expect_closing_delimiter(m, T!['/']);
-    p.wrap(m, SyntaxKind::Italics);
-}
-
-fn parse_bold(p: &mut Parser) {
-    let m = p.start();
-    let kind = T![Asterisk];
-    p.bump(kind);
-    if p.at(kind) {
-        p.unexpected();
-    }
-    if p.at(T![WhiteSpace]) {
-        p.unexpected();
-    }
-
-    time_bound_while!(!p.at(T![Eof]), {
-        if p.at(kind) {
-            if p.next()
-                .filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k))
-                .is_some()
-            {
-                break;
-            } else {
-                p.unexpected();
-                continue;
-            }
-        } else {
-            parse_attached_modifiers(p);
-        }
-    });
-    p.expect_closing_delimiter(m, kind);
-    p.wrap(m, SyntaxKind::Bold);
 }
 
 fn parse_atmod_text_chunk(p: &mut Parser) {
@@ -414,7 +310,7 @@ macro_rules! assert_tree {
             };
 
             let mut p = $crate::Parser::new($input);
-            $crate::grammer::$parse_fn(&mut p);
+            $parse_fn(&mut p);
             assert_eq!(p.nodes().len(), 1);
 
             let output = p.nodes()[0].display();
@@ -438,7 +334,7 @@ macro_rules! assert_tree {
             };
 
             let mut p = $crate::Parser::new($input);
-            $crate::grammer::$parse_fn(&mut p);
+            $parse_fn(&mut p);
             assert_eq!(p.nodes().len(), 1);
 
             let output = p.nodes()[0].display();

@@ -1,9 +1,0 @@
----
-source: src/grammer/am.rs
-assertion_line: 124
-expression: output
----
-Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
-  Error: "/" (unclosed delimiter) [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
-  TextChunk [ offsets: 1, position: ( line: 0, col: 1 ) ] ]
-    Word: "ails xcn abhl" [ offsets: 1, position: ( line: 0, col: 1 ) ] ]
