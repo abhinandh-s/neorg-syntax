@@ -328,7 +328,7 @@ macro_rules! define_punct_lexers {
 
         /// .
         pub trait PuncKind {
-          /// .    
+          /// .
           fn is_punctuation(&self) -> bool;
         }
 
