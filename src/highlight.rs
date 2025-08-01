@@ -1,5 +1,3 @@
-#![allow(dead_code, unused)]
-
 use crate::{SyntaxKind, SyntaxNode};
 
 #[cfg(feature = "tower-lsp")]
@@ -10,15 +8,21 @@ pub(crate) use lsp_types as lsp;
 
 pub struct Highlight {
     source: Vec<SyntaxNode>,
-    //  line: u32,
-    //  char: u32,
+    length: u32,
+    delta_line: u32,
+    delta_start: u32,
+    token_type: u32,
     result: lsp::SemanticTokens,
 }
 
 impl Highlight {
     pub fn new(source: SyntaxNode) -> Self {
         Self {
-            source: source.flatten(),
+            source: source.flatten(false),
+            length: 0,
+            delta_line: 0,
+            delta_start: 0,
+            token_type: 0,
             result: lsp::SemanticTokens {
                 result_id: None,
                 data: Vec::new(),
@@ -30,37 +34,89 @@ impl Highlight {
         self.result.data.push(tok);
     }
 
+    // covert lsp Range to delta
+    // Range {
+    //  start: Position {
+    //      line: u32,
+    //      character: u32,
+    //  },
+    //  end: Position {
+    //      line: u32,
+    //      character: u32,
+    //  }
+    // }
     pub fn get(&mut self) -> &lsp::SemanticTokens {
-        let mut length = 0;
-        let mut token_type = 0;
-        let mut delta_line = 0;
-        let mut delta_start = 0;
         for node in self.source.clone() {
-            let ln_start = node.start_position().line;
-            let ch_start = node.start_position().character;
+            self.set_length(node.len_utf16() as u32);
+            let line_start = node.start_position().line;
+            let char_start = node.start_position().character;
 
-            // delta_line = ln_start - delta_line;
-            // delta_start = ch_start - delta_line;
-            length = node.len_utf16() as u32;
-            let lat = node.children().last().map_or(0, |f| f.len_utf16());
             match node.kind() {
-                SyntaxKind::Quote => token_type = 8,
-                SyntaxKind::Heading => token_type = 9,
+                SyntaxKind::Quote => self.set_token_type(8),
+                SyntaxKind::Heading => self.set_token_type(9),
+                SyntaxKind::Italics => self.set_token_type(10),
                 _ => (),
             }
-            // everything is u32
+
             self.push(lsp::SemanticToken {
-                delta_line,
-                delta_start,
-                length,
-                token_type,                // quote
-                token_modifiers_bitset: 0, // ???
+                delta_line: self.delta_line(),
+                delta_start: self.delta_start(),
+                length: self.length(),
+                token_type: self.token_type(),
+                token_modifiers_bitset: 0,
             });
+            let line_end = node.end_position().line;
+            let delta_line = line_end.saturating_sub(line_start);
+            self.set_delta_line(delta_line);
+            let char_end = node.end_position().character;
+            if self.delta_line() == 0 {
+                self.set_delta_start(char_end.saturating_sub(char_start));
+            } else {
+                self.set_delta_start(char_end);
+            }
+            self.reset_token_type();
         }
         &self.result
     }
+
+    pub fn set_delta_line(&mut self, delta_line: u32) {
+        self.delta_line = delta_line;
+    }
+
+    pub fn set_delta_start(&mut self, delta_start: u32) {
+        self.delta_start = delta_start;
+    }
+
+    pub fn delta_line(&self) -> u32 {
+        self.delta_line
+    }
+
+    pub fn delta_start(&self) -> u32 {
+        self.delta_start
+    }
+
+    pub fn length(&self) -> u32 {
+        self.length
+    }
+
+    pub fn set_length(&mut self, length: u32) {
+        self.length = length;
+    }
+
+    pub fn set_token_type(&mut self, token_type: u32) {
+        self.token_type = token_type;
+    }
+
+    pub fn reset_token_type(&mut self) {
+        self.token_type = 0;
+    }
+
+    pub fn token_type(&self) -> u32 {
+        self.token_type
+    }
 }
 
+#[macro_export]
 macro_rules! semtype {
     ($tag:literal) => {
         lsp::SemanticTokenType::new($tag)
@@ -68,15 +124,32 @@ macro_rules! semtype {
 }
 
 pub const LEGEND_TYPE: &[lsp::SemanticTokenType] = &[
-    lsp::SemanticTokenType::FUNCTION,
-    lsp::SemanticTokenType::VARIABLE,
-    lsp::SemanticTokenType::STRING,
-    lsp::SemanticTokenType::COMMENT,
-    lsp::SemanticTokenType::NUMBER,
-    lsp::SemanticTokenType::KEYWORD,
-    lsp::SemanticTokenType::OPERATOR,
-    lsp::SemanticTokenType::PARAMETER,
-    lsp::SemanticTokenType::new("neorg.quote"),
-    lsp::SemanticTokenType::new("neorg.heading"),
-    lsp::SemanticTokenType::new("neorg.heading"),
+    lsp::SemanticTokenType::FUNCTION,             // 0
+    lsp::SemanticTokenType::VARIABLE,             // 1
+    lsp::SemanticTokenType::STRING,               // 2
+    lsp::SemanticTokenType::COMMENT,              // 3
+    lsp::SemanticTokenType::NUMBER,               // 5
+    lsp::SemanticTokenType::KEYWORD,              // 5
+    lsp::SemanticTokenType::OPERATOR,             // 6
+    lsp::SemanticTokenType::PARAMETER,            // 7
+    lsp::SemanticTokenType::new("neorg.quote"),   // 8
+    lsp::SemanticTokenType::new("neorg.heading"), // 9
+    lsp::SemanticTokenType::new("neorg.italics"), // 10
+    lsp::SemanticTokenType::new("neorg.bold"),    // 11
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_semantic_token_encoding_and_delta_edit() {
+        let source = "this is a test for delta calculation";
+        let mut p = crate::Parser::new(source);
+
+        let cst = crate::document(&mut p);
+
+        let mut res = Highlight::new(cst);
+        let _s = res.get();
+    }
+}

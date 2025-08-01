@@ -206,6 +206,7 @@ fn paragraph_segment(p: &mut Parser) {
     }
     if !p.is_at_eof() {
         p.expect(T![LineEnding]);
+        p.bump_line();
     }
     p.wrap(m, T![ParaSegment]);
 }
@@ -215,6 +216,8 @@ fn paragraph(p: &mut Parser) {
     while !p.is_at_eof() {
         if p.current() == SyntaxKind::ParaBreak {
             p.bump(T![ParaBreak]);
+            p.bump_line();
+            p.bump_line();
             break;
         } else {
             paragraph_segment(p);

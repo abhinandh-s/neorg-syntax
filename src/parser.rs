@@ -49,8 +49,7 @@ impl Parser {
         }
     }
 
-    pub(crate) fn eat_line_ending(&mut self) {
-        self.eat();
+    pub(crate) fn bump_line(&mut self) {
         self.loc.bump_line(1);
     }
 

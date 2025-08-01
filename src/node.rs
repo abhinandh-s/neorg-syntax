@@ -87,16 +87,18 @@ pub(crate) fn get_diagnostic(node: SyntaxNode, result: &mut Vec<tower_lsp::lsp_t
     }
 }
 
-fn get_flatten(node: SyntaxNode, result: &mut Vec<SyntaxNode>) {
+fn get_flatten(node: SyntaxNode, result: &mut Vec<SyntaxNode>, get_leaf: bool) {
     match node.0 {
         Repr::Leaf(leaf) => {
-            result.push(leaf.into());
+            if get_leaf {
+                result.push(leaf.into());
+            }
         }
         Repr::Inner(inner_node) => {
             let syn: SyntaxNode = inner_node.deref().to_owned().into();
             result.push(syn);
             for i in &inner_node.children {
-                get_flatten(i.clone(), result);
+                get_flatten(i.clone(), result, get_leaf);
             }
         }
         Repr::Error(error_node) => {
@@ -188,9 +190,9 @@ impl SyntaxNode {
         }
     }
 
-    pub fn flatten(&self) -> Vec<SyntaxNode> {
+    pub fn flatten(&self, leaf: bool) -> Vec<SyntaxNode> {
         let mut vec = Vec::new();
-        get_flatten(self.clone(), &mut vec);
+        get_flatten(self.clone(), &mut vec, leaf);
         vec
     }
 

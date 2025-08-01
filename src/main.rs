@@ -7,9 +7,14 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = "
-> this is quote
-";
+    let source = r##"* Heading 1
+
+this is /italic/ ds.
+
+> this is quote 
+
+i was soo fluminous.
+"##;
     let mut p = Parser::new(source);
 
     let cst = document(&mut p);
@@ -20,7 +25,10 @@ fn main() {
         println!("{i:?}");
     }
 
-    let mut binding = crate::highlight::Highlight::new(cst);
-    let s = binding.get();
-    println!("{s:#?}");
+    #[cfg(feature = "tower-lsp")]
+    {
+        let mut hl = crate::highlight::Highlight::new(cst);
+        let res = hl.get();
+        println!("{:#?}", res);
+    }
 }
