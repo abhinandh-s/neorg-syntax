@@ -7,14 +7,20 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = include_str!("../examples/tests/implemented.norg");
+    let source = "
+> this is quote
+";
     let mut p = Parser::new(source);
 
     let cst = document(&mut p);
     println!("{}", cst.display());
 
-    let err = crate::get_errors(cst);
+    let err = crate::get_errors(cst.clone());
     for i in err {
         println!("{i:?}");
     }
+
+    let mut binding = crate::highlight::Highlight::new(cst);
+    let s = binding.get();
+    println!("{s:#?}");
 }

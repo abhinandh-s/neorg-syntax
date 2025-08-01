@@ -13,3 +13,9 @@ pub enum Error {
     #[error("unknown data store error")]
     Unknown,
 }
+
+#[derive(Debug)]
+pub enum Lints {
+    RedundantParaBreak,
+    MetaWithNoAttr,
+}

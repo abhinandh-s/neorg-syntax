@@ -87,6 +87,24 @@ pub(crate) fn get_diagnostic(node: SyntaxNode, result: &mut Vec<tower_lsp::lsp_t
     }
 }
 
+fn get_flatten(node: SyntaxNode, result: &mut Vec<SyntaxNode>) {
+    match node.0 {
+        Repr::Leaf(leaf) => {
+            result.push(leaf.into());
+        }
+        Repr::Inner(inner_node) => {
+            let syn: SyntaxNode = inner_node.deref().to_owned().into();
+            result.push(syn);
+            for i in &inner_node.children {
+                get_flatten(i.clone(), result);
+            }
+        }
+        Repr::Error(error_node) => {
+            let syn: SyntaxNode = error_node.deref().to_owned().into();
+            result.push(syn)
+        }
+    }
+}
 pub fn get_kinds(kind: SyntaxKind, node: SyntaxNode) -> Vec<SyntaxNode> {
     let mut vec = Vec::new();
     get_by_kind(kind, node, &mut vec);
@@ -168,6 +186,12 @@ impl SyntaxNode {
             Repr::Inner(inner) => inner.kind(),
             Repr::Error(_) => SyntaxKind::Error,
         }
+    }
+
+    pub fn flatten(&self) -> Vec<SyntaxNode> {
+        let mut vec = Vec::new();
+        get_flatten(self.clone(), &mut vec);
+        vec
     }
 
     /// The span of the node.
@@ -427,9 +451,9 @@ impl InnerNode {
 impl LocationTrait for InnerNode {
     /// utf16 len of the text in token
     fn len_utf16(&self) -> usize {
-        let start = self.children.first().map_or(0, |f| f.offset()) as u32;
-        let end = self.children.last().map_or(0, |f| f.offset()) as u32;
-        end.saturating_sub(start) as usize
+        let mut len = 0_usize;
+        self.children.iter().for_each(|f| len += f.len_utf16());
+        len
     }
 
     fn offset(&self) -> usize {

@@ -195,7 +195,7 @@ impl Parser {
 
     #[track_caller]
     pub(crate) fn is_at_eof(&self) -> bool {
-        self.current() == T![Eof]
+        self.current() == T![Eof] || self.cursor >= self.tokens.len()
     }
 
     // Range:

@@ -204,7 +204,9 @@ fn paragraph_segment(p: &mut Parser) {
             }
         }
     }
-    p.bump(T![LineEnding]);
+    if !p.is_at_eof() {
+        p.expect(T![LineEnding]);
+    }
     p.wrap(m, T![ParaSegment]);
 }
 

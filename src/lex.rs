@@ -316,12 +316,30 @@ macro_rules! define_punct_lexers {
         /// # Panic
         ///
         /// panics if given `SyntaxKind` is not a punctuation Kind
+        #[track_caller]
         pub const fn kind_to_char(kind: SyntaxKind) -> char {
             match kind {
                 $(
                     $kind => $char,
                 )*
                 _ => panic!("not a PUNCTUATION kind"),
+            }
+        }
+
+        /// .
+        pub trait PuncKind {
+          /// .    
+          fn is_punctuation(&self) -> bool;
+        }
+
+        impl PuncKind for crate::SyntaxKind {
+            fn is_punctuation(&self) -> bool {
+                  match &self {
+                    $(
+                        $kind => true,
+                    )*
+                    _ => false,
+                }
             }
         }
 

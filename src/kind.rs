@@ -1,6 +1,6 @@
 use derive_screaming_snake_case::Display;
 
-use crate::kind_to_char;
+use crate::{PuncKind, kind_to_char};
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Display, PartialEq, Eq, Clone, Copy, Hash)]
@@ -91,11 +91,10 @@ impl SyntaxKind {
 
     #[track_caller]
     pub fn text(&self) -> String {
-        match self {
-            SyntaxKind::WhiteSpace => "WhiteSpace".to_string(),
-            SyntaxKind::Word => "text".to_string(),
-            SyntaxKind::LineEnding => "LineEnding".to_string(),
-            any => kind_to_char(*any).to_string(),
+        if self.is_punctuation() {
+            kind_to_char(*self).to_string()
+        } else {
+            format!("{:?}", *self)
         }
     }
 

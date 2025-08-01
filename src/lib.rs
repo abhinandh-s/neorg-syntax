@@ -1,6 +1,7 @@
 pub(crate) mod errors;
 
 mod grammer;
+pub mod highlight;
 mod kind;
 mod lex;
 mod node;
