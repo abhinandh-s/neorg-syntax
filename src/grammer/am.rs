@@ -19,136 +19,111 @@ use super::*;
 /// - $f(x) = y$ (verbatim) -10
 /// - &variable& (verbatim) -11
 pub(super) fn parse_attached_modifiers(p: &mut Parser) {
-    match p.current() {
-        SyntaxKind::Asterisk => parse_bold(p),         // 1
-        SyntaxKind::Slash => parse_italics(p),         // 2
-        SyntaxKind::Underscore => parse_underline(p),  // 3
-        SyntaxKind::Exclamation => parse_spoiler(p),   // 4
-        SyntaxKind::Caret => parse_superscript(p),     // 5
-        SyntaxKind::Comma => parse_subscript(p),       // 6
-        SyntaxKind::Backtick => parse_inline_code(p),  // 7
-        SyntaxKind::Percent => parse_null_modifier(p), // 8
-        SyntaxKind::Dollar => parse_inline_maths(p),   // 9
-        SyntaxKind::Ampersand => parse_variable(p),    // 10
-        SyntaxKind::Hyphen => parse_strike_through(p), // 12
-        SyntaxKind::Pipe => parse_verbatim(p),         // 11
-        _ => parse_atmod_text_chunk(p),
+    if let Some(kind) = p.current() {
+        match kind {
+            SyntaxKind::Asterisk => parse_bold(p),         // 1
+            SyntaxKind::Slash => parse_italics(p),         // 2
+            SyntaxKind::Underscore => parse_underline(p),  // 3
+            SyntaxKind::Exclamation => parse_spoiler(p),   // 4
+            SyntaxKind::Caret => parse_superscript(p),     // 5
+            SyntaxKind::Comma => parse_subscript(p),       // 6
+            SyntaxKind::Backtick => parse_inline_code(p),  // 7
+            SyntaxKind::Percent => parse_null_modifier(p), // 8
+            SyntaxKind::Dollar => parse_inline_maths(p),   // 9
+            SyntaxKind::Ampersand => parse_variable(p),    // 10
+            SyntaxKind::Hyphen => parse_strike_through(p), // 12
+            SyntaxKind::Pipe => parse_verbatim(p),         // 11
+            _ => parse_text_chunk(p),
+        }
     }
 }
 
-pub(super) fn parse_inline_code(_: &mut Parser) {
-    todo!()
+fn parse_text_chunk(p: &mut Parser) {
+    looper!(!p.is_at_eof(), {
+        if p.at_set(ATTACHED_MODIFIERS) {
+            break;
+        } else {
+            p.eat();
+        }
+    });
 }
 
-pub(super) fn parse_null_modifier(_: &mut Parser) {
-    todo!()
+pub(super) fn parse_inline_code(p: &mut Parser) {
+    parse_modifier_block(p, T![Backtick], T![InlineCode], false);
 }
 
-fn parse_inline_maths(_: &mut Parser) {
-    todo!()
+pub(super) fn parse_null_modifier(p: &mut Parser) {
+    parse_modifier_block(p, T![Percent], T![NullModifier], true);
 }
 
-fn parse_variable(_: &mut Parser) {
-    todo!()
+fn parse_inline_maths(p: &mut Parser) {
+    parse_modifier_block(p, T![Dollar], T![InlineMath], false);
 }
 
-fn parse_strike_through(_: &mut Parser) {
-    todo!()
+fn parse_variable(p: &mut Parser) {
+    parse_modifier_block(p, T![Ampersand], T![Variable], true);
+}
+
+fn parse_strike_through(p: &mut Parser) {
+    parse_modifier_block(p, T![Hyphen], T![StrikeThrough], true);
 }
 
 fn parse_verbatim(p: &mut Parser) {
-    let m = p.start();
-    p.bump(T![Pipe]);
-    if p.at(T![Pipe]) {
-        p.unexpected();
-    }
-
-    let text = p.start();
-    time_bound_while!(
-        !p.at_set(SyntaxSet::new().add(SyntaxKind::Eof).add(SyntaxKind::Pipe)),
-        {
-            p.eat();
-        }
-    );
-    p.wrap(text, SyntaxKind::TextChunk);
-
-    p.expect_closing_delimiter(m, T![Pipe]);
-    p.wrap(m, SyntaxKind::Verbatim);
+    parse_modifier_block(p, T![Pipe], T![Verbatim], false);
 }
 
-fn parse_subscript(_: &mut Parser) {
-    todo!()
+fn parse_subscript(p: &mut Parser) {
+    parse_modifier_block(p, T![Comma], T![Subscript], true);
 }
 
-fn parse_superscript(_: &mut Parser) {
-    todo!()
+fn parse_superscript(p: &mut Parser) {
+    parse_modifier_block(p, T![Caret], T![Superscript], true);
 }
 
-fn parse_spoiler(_: &mut Parser) {
-    todo!()
+fn parse_spoiler(p: &mut Parser) {
+    parse_modifier_block(p, T![Exclamation], T![Spoiler], true);
 }
 
-fn parse_underline(_: &mut Parser) {
-    todo!()
+fn parse_underline(p: &mut Parser) {
+    parse_modifier_block(p, T![Underscore], T![UnderLine], true);
 }
 
 fn parse_italics(p: &mut Parser) {
-    let m = p.start();
-    p.bump(T!['/']);
-    if p.at(T![Slash]) {
-        p.unexpected();
-    }
-    if p.at(T![WhiteSpace]) {
-        p.unexpected();
-    }
-
-    time_bound_while!(!p.at(T![Eof]), {
-        if p.at(T![Slash]) {
-            if p.next()
-                .filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k))
-                .is_some()
-            {
-                break;
-            } else {
-                p.unexpected();
-                continue;
-            }
-        } else {
-            parse_attached_modifiers(p);
-        }
-    });
-    p.expect_closing_delimiter(m, T!['/']);
-    p.wrap(m, SyntaxKind::Italics);
+    parse_modifier_block(p, T![Slash], T![Italics], true);
 }
 
 fn parse_bold(p: &mut Parser) {
+    parse_modifier_block(p, T![Asterisk], T![Bold], true);
+}
+
+#[track_caller]
+fn parse_modifier_block(p: &mut Parser, kind: SyntaxKind, result: SyntaxKind, trimmed: bool) {
     let m = p.start();
-    let kind = T![Asterisk];
     p.bump(kind);
     if p.at(kind) {
-        p.unexpected();
+        p.unexpected_hinted("Italics block is empty");
     }
-    if p.at(T![WhiteSpace]) {
-        p.unexpected();
+    if trimmed && p.at(T![WhiteSpace]) {
+        p.unexpected_hinted(format!("`{result}` should not start with `WhiteSpace`"));
     }
-
-    time_bound_while!(!p.at(T![Eof]), {
-        if p.at(kind) {
-            if p.next()
+    looper!(!p.at(T![Eof]), {
+        match p.at(kind) {
+            true if p
+                .next()
                 .filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k))
-                .is_some()
+                .is_some() =>
             {
                 break;
-            } else {
+            }
+            true => {
                 p.unexpected();
                 continue;
             }
-        } else {
-            parse_attached_modifiers(p);
+            false => parse_attached_modifiers(p),
         }
     });
     p.expect_closing_delimiter(m, kind);
-    p.wrap(m, SyntaxKind::Bold);
+    p.wrap(m, result);
 }
 
 assert_tree!(

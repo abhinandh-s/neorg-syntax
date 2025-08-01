@@ -49,6 +49,10 @@ impl Parser {
         }
     }
 
+    pub(crate) fn is_stuck(&self, last_cursor: usize) -> bool {
+        self.cursor == last_cursor
+    }
+
     pub(crate) fn bump_line(&mut self) {
         self.loc.bump_line(1);
     }
@@ -61,12 +65,12 @@ impl Parser {
 
     #[track_caller]
     pub(crate) fn assert(&mut self, kind: SyntaxKind) {
-        assert_eq!(self.current(), kind);
+        assert_eq!(self.current_unchecked(), kind);
     }
 
     #[track_caller]
     pub(crate) fn bump(&mut self, kind: SyntaxKind) {
-        assert_eq!(self.current(), kind);
+        assert_eq!(self.current_unchecked(), kind);
         self.eat();
     }
 
@@ -76,10 +80,15 @@ impl Parser {
     }
 
     #[track_caller]
-    pub(crate) fn current(&self) -> SyntaxKind {
-        self.tokens[self.cursor].kind()
+    pub(crate) fn current(&self) -> Option<SyntaxKind> {
+        self.tokens.get(self.cursor).map(|f| f.kind())
     }
 
+    #[track_caller]
+    pub(crate) fn current_unchecked(&self) -> SyntaxKind {
+        self.tokens[self.cursor].kind()
+    }
+    
     pub(crate) fn next(&self) -> Option<SyntaxKind> {
         self.tokens.get(self.cursor + 1).map(|f| f.kind())
     }
@@ -177,6 +186,11 @@ impl Parser {
     pub(crate) fn unexpected(&mut self) {
         self.eat_and_get().unexpected();
     }
+    /// Consume the next token (if any) and produce an error stating that it was
+    /// unexpected.
+    pub(crate) fn unexpected_hinted(&mut self, hint: impl Into<String>) {
+        self.eat_and_get().unexpected_with_hint(hint);
+    }
     /// Produce an error that the given `thing` was expected at the position
     /// of the marker `m`.
     pub(crate) fn expected_at(&mut self, m: Marker, thing: &str) {
@@ -184,17 +198,21 @@ impl Parser {
         self.nodes.insert(m.0, error);
     }
 
+    #[track_caller]
     pub(crate) fn at(&self, kind: SyntaxKind) -> bool {
-        self.current() == kind
+        match self.is_at_eof() {
+            true => false,
+            false => self.current_unchecked() == kind,
+        }
     }
 
     pub(crate) fn at_set(&self, set: SyntaxSet) -> bool {
-        set.contains(self.current())
+        set.contains(self.current_unchecked())
     }
 
     #[track_caller]
     pub(crate) fn is_at_eof(&self) -> bool {
-        self.current() == T![Eof] || self.cursor >= self.tokens.len()
+        self.cursor >= self.tokens.len()
     }
 
     // Range:
@@ -225,27 +243,4 @@ impl Parser {
     pub fn set_balanced(&mut self, balanced: bool) {
         self.balanced = balanced;
     }
-}
-
-/// If an Operation in this while loop took more than 1 second it will panic
-#[macro_export]
-macro_rules! time_bound_while {
-    ($cond:expr, $body:block) => {{
-        #[cfg(debug_assertions)]
-        {
-            let start = std::time::Instant::now();
-            while $cond {
-                if start.elapsed() >= std::time::Duration::from_secs(1) {
-                    panic!("Operation took more than 1 sec, possible infinite loop.");
-                }
-                $body
-            }
-        }
-        #[cfg(not(debug_assertions))]
-        {
-            while $cond {
-                $body
-            }
-        }
-    }};
 }

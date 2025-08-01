@@ -7,13 +7,17 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = r##"* Heading 1
+    let source = r##"** this is a 
 
-this is /italic/ ds.
 
-> this is quote 
+** tyhid 
+i am really fast
+dsds 
+dsa
 
-i was soo fluminous.
+&this&  %this%
+
+dsdas fdfdsdas fdfi was soo fluminous.
 "##;
     let mut p = Parser::new(source);
 
@@ -29,6 +33,6 @@ i was soo fluminous.
     {
         let mut hl = crate::highlight::Highlight::new(cst);
         let res = hl.get();
-        println!("{:#?}", res);
+        println!("{res:#?}");
     }
 }

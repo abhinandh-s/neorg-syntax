@@ -30,10 +30,6 @@ impl Highlight {
         }
     }
 
-    fn push(&mut self, tok: lsp::SemanticToken) {
-        self.result.data.push(tok);
-    }
-
     // covert lsp Range to delta
     // Range {
     //  start: Position {
@@ -45,34 +41,38 @@ impl Highlight {
     //      character: u32,
     //  }
     // }
-    pub fn get(&mut self) -> &lsp::SemanticTokens {
-        for node in self.source.clone() {
-            self.set_length(node.len_utf16() as u32);
-            let line_start = node.start_position().line;
-            let char_start = node.start_position().character;
 
+    fn push(&mut self, n: u32, node: SyntaxNode) {
+        self.set_length(self.length().saturating_add(node.len_utf16() as u32));
+        let line_start = node.start_position().line.saturating_sub(1);
+        println!("{line_start}");
+        let length = node.len_utf16() as u32;
+        self.set_delta_line(line_start.saturating_sub(self.delta_line()));
+        self.result.data.push(lsp::SemanticToken {
+            delta_line: self.delta_line(),
+            delta_start: self.delta_start(),
+            length,
+            token_type: n,
+            token_modifiers_bitset: 0,
+        });
+    }
+    pub fn get_nodes(&self) -> Vec<SyntaxNode> {
+        let mut result = Vec::new();
+        for node in self.source.clone() {
             match node.kind() {
-                SyntaxKind::Quote => self.set_token_type(8),
-                SyntaxKind::Heading => self.set_token_type(9),
-                SyntaxKind::Italics => self.set_token_type(10),
+                SyntaxKind::Heading => result.push(node),
+                SyntaxKind::NullModifier => result.push(node),
                 _ => (),
             }
-
-            self.push(lsp::SemanticToken {
-                delta_line: self.delta_line(),
-                delta_start: self.delta_start(),
-                length: self.length(),
-                token_type: self.token_type(),
-                token_modifiers_bitset: 0,
-            });
-            let line_end = node.end_position().line;
-            let delta_line = line_end.saturating_sub(line_start);
-            self.set_delta_line(delta_line);
-            let char_end = node.end_position().character;
-            if self.delta_line() == 0 {
-                self.set_delta_start(char_end.saturating_sub(char_start));
-            } else {
-                self.set_delta_start(char_end);
+        }
+        result
+    }
+    pub fn get(&mut self) -> &lsp::SemanticTokens {
+        for node in self.get_nodes() {
+            match node.kind() {
+                SyntaxKind::Heading => self.push(9, node),
+                SyntaxKind::NullModifier => self.push(3, node),
+                _ => (),
             }
             self.reset_token_type();
         }

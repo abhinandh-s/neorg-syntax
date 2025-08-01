@@ -331,6 +331,11 @@ impl SyntaxNode {
     pub(super) fn unexpected(&mut self) {
         self.convert_to_error(format!("unexpected {}", self.kind().text()));
     }
+      /// Convert the child to an error stating it was unexpected.
+    pub(super) fn unexpected_with_hint(&mut self, hint: impl Into<String>) {
+        self.convert_to_error(format!("unexpected {}", self.kind().text()));
+        self.hint(hint);
+    }
 }
 
 // for 'convert_to_error'
