@@ -1,5 +1,6 @@
 //! # Attached Modifiers
 
+
 use super::*;
 
 /// Their name should be rather self-explanatory - both the opening and closing modifier
@@ -18,8 +19,16 @@ use super::*;
 /// - `%null modifier%` -9
 /// - $f(x) = y$ (verbatim) -10
 /// - &variable& (verbatim) -11
+#[track_caller]
 pub(super) fn parse_attached_modifiers(p: &mut Parser) {
-    if let Some(kind) = p.current() {
+    if p.prev()
+        .map(|f| ATTACHED_MODIFIERS.add(SyntaxKind::WhiteSpace).contains(f))
+        .is_none()
+    {
+        p.unexpected();
+    }
+    let last_cursor = p.cursor;
+    if let Some(kind) = p.get() {
         match kind {
             SyntaxKind::Asterisk => parse_bold(p),         // 1
             SyntaxKind::Slash => parse_italics(p),         // 2
@@ -35,6 +44,11 @@ pub(super) fn parse_attached_modifiers(p: &mut Parser) {
             SyntaxKind::Pipe => parse_verbatim(p),         // 11
             _ => parse_text_chunk(p),
         }
+    }
+    p.assert_movement(last_cursor);
+    let c = p.current();
+    if !ATTACHED_MODIFIERS.add(SyntaxKind::WhiteSpace).contains(c) {
+        p.unexpected();
     }
 }
 
@@ -96,38 +110,55 @@ fn parse_bold(p: &mut Parser) {
     parse_modifier_block(p, T![Asterisk], T![Bold], true);
 }
 
+const MODIFIER_STOPER: SyntaxSet = syntax_set!(WhiteSpace, LineEnding, ParaBreak, Eof);
+
 #[track_caller]
 fn parse_modifier_block(p: &mut Parser, kind: SyntaxKind, result: SyntaxKind, trimmed: bool) {
     let m = p.start();
-    p.bump(kind);
+    p.bump(kind); // eat the opening modifier 
     if p.at(kind) {
-        p.unexpected_hinted("Italics block is empty");
+        p.unexpected_with_hint(format!("`{result}` block is empty"));
     }
     if trimmed && p.at(T![WhiteSpace]) {
-        p.unexpected_hinted(format!("`{result}` should not start with `WhiteSpace`"));
+        p.unexpected_with_hint(format!("`{result}` should not start with `WhiteSpace`"));
     }
-    looper!(!p.at(T![Eof]), {
-        match p.at(kind) {
-            true if p
-                .next()
-                .filter(|k| syntax_set!(WhiteSpace, LineEnding, Eof).contains(*k))
-                .is_some() =>
-            {
-                break;
-            }
-            true => {
-                p.unexpected();
-                continue;
-            }
-            false => parse_attached_modifiers(p),
+    // opening modifiers logic ends here
+    looper!(!p.is_at_eof(), {
+        match p.current() {
+            _ => parse_attached_modifiers(p),
         }
+        // match p.at(kind) {
+        //     true if p.next().filter(|k| MODIFIER_STOPER.contains(*k)).is_some() => {
+        //         break;
+        //     }
+        //     true if p.next().filter(|k| T![Word] == *k).is_some() => {
+        //         p.eat();
+        //         continue;
+        //     }
+        //     true => {
+        //         p.eat();
+        //         continue;
+        //     }
+        //     false => parse_attached_modifiers(p),
+        // }
     });
-    p.expect_closing_delimiter(m, kind);
+    
+    // panic!("{}", p.current());
+    // closing modifiers logic
+    if trimmed {
+        if let Some(n) = p.nodes.last_mut() {
+            if n.kind() == SyntaxKind::WhiteSpace {
+                n.unexpected(); // set the `WhiteSpace` before closing modifiers as unexpected
+            }
+        }
+    }
+   
+    // p.expect_closing_delimiter(m, kind); // eat the closing modifier.
     p.wrap(m, result);
 }
 
 assert_tree!(
-    // [case:1/9] perfect bold
+    // [case:1/9] perfect italics (x)
     italics,
     italics_01,
     parse_italics,

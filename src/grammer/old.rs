@@ -2,26 +2,7 @@
 Any of the following choices are valid IN-LINE elements. Any
 multitude of these are combined to form a `paragraph_segment`.
 
-paragraph_element => word 
-                     | space
-                     | trailing_modifier
-                     | link
-                     | anchor_declaration
-                     | anchor_definition
-                     | inline_link_target
-                     | escape_sequence
-                     | link_modifier?
-                     | attached_modifier?
-"]
-fn paragraph_element(p: &mut Parser) {
-    let c = p.current_unchecked();
-    match c {
-        SyntaxKind::RParen => (),
-        SyntaxKind::RCurly => (),
-        SyntaxKind::RSquare => (),
-        _ => (),
-    }
-}
+
 
 // link: $ =>
 // prec.right(2,

@@ -49,8 +49,12 @@ impl Parser {
         }
     }
 
-    pub(crate) fn is_stuck(&self, last_cursor: usize) -> bool {
-        self.cursor == last_cursor
+    #[track_caller]
+    pub(crate) fn assert_movement(&self, last_cursor: usize) {
+        if self.cursor == last_cursor {
+            let tok = self.nth(last_cursor);
+            panic!("Parser is stuck at {last_cursor} on `{tok}`");
+        }
     }
 
     pub(crate) fn bump_line(&mut self) {
@@ -65,12 +69,12 @@ impl Parser {
 
     #[track_caller]
     pub(crate) fn assert(&mut self, kind: SyntaxKind) {
-        assert_eq!(self.current_unchecked(), kind);
+        assert_eq!(self.current(), kind);
     }
 
     #[track_caller]
     pub(crate) fn bump(&mut self, kind: SyntaxKind) {
-        assert_eq!(self.current_unchecked(), kind);
+        assert_eq!(self.current(), kind);
         self.eat();
     }
 
@@ -78,19 +82,28 @@ impl Parser {
     pub(crate) fn get_current(&self) -> Option<SyntaxKind> {
         self.tokens.get(self.cursor).map(|t| t.kind())
     }
+   
+    #[track_caller]
+    pub(crate) fn get_unchecked(&self, n: usize) -> SyntaxKind {
+        self.tokens[n].kind()
+    }
 
     #[track_caller]
-    pub(crate) fn current(&self) -> Option<SyntaxKind> {
+    pub(crate) fn get(&self) -> Option<SyntaxKind> {
         self.tokens.get(self.cursor).map(|f| f.kind())
     }
 
     #[track_caller]
-    pub(crate) fn current_unchecked(&self) -> SyntaxKind {
-        self.tokens[self.cursor].kind()
+    pub(crate) fn current(&self) -> SyntaxKind {
+        self.tokens.get(self.cursor).map_or(T![Eof],|f| f.kind())
     }
-    
+
     pub(crate) fn next(&self) -> Option<SyntaxKind> {
         self.tokens.get(self.cursor + 1).map(|f| f.kind())
+    }
+
+    pub(crate) fn nth(&self, n: usize) -> SyntaxKind {
+        self.tokens.get(n).map_or(T![Eof], |f| f.kind())
     }
 
     pub(crate) fn prev(&self) -> Option<SyntaxKind> {
@@ -188,7 +201,7 @@ impl Parser {
     }
     /// Consume the next token (if any) and produce an error stating that it was
     /// unexpected.
-    pub(crate) fn unexpected_hinted(&mut self, hint: impl Into<String>) {
+    pub(crate) fn unexpected_with_hint(&mut self, hint: impl Into<String>) {
         self.eat_and_get().unexpected_with_hint(hint);
     }
     /// Produce an error that the given `thing` was expected at the position
@@ -202,17 +215,17 @@ impl Parser {
     pub(crate) fn at(&self, kind: SyntaxKind) -> bool {
         match self.is_at_eof() {
             true => false,
-            false => self.current_unchecked() == kind,
+            false => self.current() == kind,
         }
     }
 
     pub(crate) fn at_set(&self, set: SyntaxSet) -> bool {
-        set.contains(self.current_unchecked())
+        set.contains(self.current())
     }
 
     #[track_caller]
     pub(crate) fn is_at_eof(&self) -> bool {
-        self.cursor >= self.tokens.len()
+        self.current() == T![Eof] || self.cursor >= self.tokens.len()
     }
 
     // Range:

@@ -7,17 +7,8 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = r##"** this is a 
-
-
-** tyhid 
-i am really fast
-dsds 
-dsa
-
-&this&  %this%
-
-dsdas fdfdsdas fdfi was soo fluminous.
+    let source = r##" %this is comment%
+    i was soo fluminous.
 "##;
     let mut p = Parser::new(source);
 
