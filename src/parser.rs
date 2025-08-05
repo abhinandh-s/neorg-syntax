@@ -82,7 +82,7 @@ impl Parser {
     pub(crate) fn get_current(&self) -> Option<SyntaxKind> {
         self.tokens.get(self.cursor).map(|t| t.kind())
     }
-   
+
     #[track_caller]
     pub(crate) fn get_unchecked(&self, n: usize) -> SyntaxKind {
         self.tokens[n].kind()
@@ -95,11 +95,20 @@ impl Parser {
 
     #[track_caller]
     pub(crate) fn current(&self) -> SyntaxKind {
-        self.tokens.get(self.cursor).map_or(T![Eof],|f| f.kind())
+        if self.tokens.len() < self.cursor {
+            panic!(
+                "Index out of bounds. cursor = {}, token len = {}",
+                self.cursor,
+                self.tokens.len()
+            );
+        }
+        self.tokens[self.cursor].kind()
     }
 
     pub(crate) fn next(&self) -> Option<SyntaxKind> {
-        self.tokens.get(self.cursor + 1).map(|f| f.kind())
+        self.tokens
+            .get(self.cursor.saturating_add(1))
+            .map(|f| f.kind())
     }
 
     pub(crate) fn nth(&self, n: usize) -> SyntaxKind {
@@ -107,11 +116,15 @@ impl Parser {
     }
 
     pub(crate) fn prev(&self) -> Option<SyntaxKind> {
-        self.tokens.get(self.cursor - 1).map(|f| f.kind())
+        self.tokens
+            .get(self.cursor.saturating_sub(1))
+            .map(|f| f.kind())
     }
 
     #[track_caller]
     pub(crate) fn eat(&mut self) {
+        assert!(self.cursor < self.tokens.len());
+        dbg!("{}", &self.tokens[self.cursor]);
         // Token `foobar`
         //
         // start_offset = 0,
@@ -219,13 +232,21 @@ impl Parser {
         }
     }
 
+    #[track_caller]
     pub(crate) fn at_set(&self, set: SyntaxSet) -> bool {
         set.contains(self.current())
     }
 
     #[track_caller]
     pub(crate) fn is_at_eof(&self) -> bool {
-        self.current() == T![Eof] || self.cursor >= self.tokens.len()
+        if self.cursor > self.tokens.len() {
+            panic!(
+                "Index out of bounds. cursor = {}, token len = {}",
+                self.cursor,
+                self.tokens.len()
+            );
+        }
+        self.current() == T![Eof]
     }
 
     // Range:
@@ -255,5 +276,23 @@ impl Parser {
 
     pub fn set_balanced(&mut self, balanced: bool) {
         self.balanced = balanced;
+    }
+
+    /// parse with infinite loop gaurd on debug mode
+    pub fn parse_while<P>(&mut self, stop: SyntaxSet, mut parse_fn: P)
+    where
+        P: FnMut(&mut Self),
+    {
+        #[cfg(debug_assertions)]
+        let start = std::time::Instant::now();
+        while !self.is_at_eof() || !self.at_set(stop) {
+            #[cfg(debug_assertions)]
+            {
+                if start.elapsed() >= std::time::Duration::from_secs(1) {
+                    panic!("Operation took more than 1 sec, possible infinite loop.");
+                }
+            }
+            parse_fn(self);
+        }
     }
 }

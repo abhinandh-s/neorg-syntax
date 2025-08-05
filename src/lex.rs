@@ -1,4 +1,12 @@
-#![deny(rust_2018_idioms, missing_docs)]
+#![deny(
+    rust_2018_idioms,
+    missing_docs,
+    redundant_lifetimes,
+    clippy::redundant_clone,
+    clippy::redundant_pub_crate,
+    clippy::redundant_allocation,
+    clippy::redundant_as_str
+)]
 
 use std::{
     fmt::{Debug, Display},
@@ -8,6 +16,133 @@ use std::{
 };
 
 use crate::SyntaxKind;
+
+/// helper trait can only be implemented on char
+///
+/// `clippy` will complain about the `self` in trait.
+/// since we Sealed the trait on `char` puting `self` is fine
+#[allow(clippy::wrong_self_convention)]
+trait NeorgChar: char::Sealed {
+    fn is_punctuation(self) -> bool;
+    fn is_neorg_char(&self) -> bool;
+    fn is_zs_whitespace(self) -> bool;
+    fn is_line_ending(self) -> bool;
+}
+
+#[rustfmt::skip]
+impl NeorgChar for char {
+    fn is_neorg_char(&self) -> bool {
+        self.is_punctuation() || self.is_zs_whitespace() || self.is_line_ending()
+    }
+    
+    /// # Punctuation
+    ///
+    /// A {** characters}[character] is considered *punctuation* if it is any of the following:
+    ///
+    /// - A standard ASCII punctuation character: `|!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~|`
+    /// - Anything in the general Unicode categories `Pc`, `Pd`, `Pe`, `Pf`, `Pi`, `Po` or `Ps`.
+    ///
+    /// -- NOTE: i have not included all general Unicode categories.
+    ///          These 7 categories contains almost 850 chars.
+    ///          Since, `Neorg` doesn't uses all of it. i don't see any point
+    ///          puting it all here.
+    fn is_punctuation(self) -> bool {
+        if self.is_ascii() {
+            PUNCTUATION_CHARS[self as usize]
+        } else {
+            false
+        }
+    }
+    
+    /// # Unicode Characters in the 'Separator, Space' Category
+    ///
+    /// <https://www.fileformat.info/info/unicode/category/Zs/list.htm>
+    #[inline(always)]
+    fn is_zs_whitespace(self) -> bool {
+        matches!(
+            self,
+            '\u{0020}' // SPACE
+          | '\u{00A0}' // NO-BREAK SPACE
+          | '\u{1680}' // OGHAM SPACE MARK
+          | '\u{2000}' // EN QUAD
+          | '\u{2001}' // EM QUAD
+          | '\u{2002}' // EN SPACE
+          | '\u{2003}' // EM SPACE
+          | '\u{2004}' // THREE-PER-EM SPACE
+          | '\u{2005}' // FOUR-PER-EM SPACE
+          | '\u{2006}' // SIX-PER-EM SPACE
+          | '\u{2007}' // FIGURE SPACE
+          | '\u{2008}' // PUNCTUATION SPACE
+          | '\u{2009}' // THIN SPACE
+          | '\u{200A}' // HAIR SPACE
+          | '\u{202F}' // NARROW NO-BREAK SPACE
+          | '\u{205F}' // MEDIUM MATHEMATICAL SPACE
+          | '\u{3000}' // IDEOGRAPHIC SPACE
+        )
+    }
+
+    /// # Line Endings
+    /// 
+    /// Line endings in Norg serve as a termination character.
+    /// They are used e.g. to terminate `paragraph segments`, `paragraphs`
+    /// and other elements like the endings of `range-able detached modifiers`.
+    /// They are not considered `whitespace`.
+    ///
+    /// The following chars are considered line endings:
+    /// 
+    /// - A line feed `U+000A` (\n)
+    /// - A form feed `U+000C`
+    /// - A carriage return `U+000D` (\r)
+    ///
+    /// The following line ending combinations are permitted:
+    /// 
+    /// - A single line feed
+    /// - A single carriage return
+    /// - A carriage return immediately followed by a line feed
+    #[inline(always)]
+    fn is_line_ending(self) -> bool {
+        matches!(self, '\u{000A}' | '\u{000C}' | '\u{000D}')
+    }
+}
+
+/// neorg punctuation characters
+#[rustfmt::skip]
+pub const PUNCTUATION_CHARS: [bool; 128] = {
+    let mut arr = [false; 128];
+    arr[33] = true;  // [ ! ]
+    arr[34] = true;  // [ " ]
+    arr[35] = true;  // [ # ]
+    arr[36] = true;  // [ $ ]
+    arr[37] = true;  // [ % ]
+    arr[38] = true;  // [ & ]
+    arr[39] = true;  // [ ' ]
+    arr[40] = true;  // [ ( ]
+    arr[41] = true;  // [ ) ]
+    arr[42] = true;  // [ * ]
+    arr[43] = true;  // [ + ]
+    arr[44] = true;  // [ , ]
+    arr[45] = true;  // [ - ]
+    arr[46] = true;  // [ . ]
+    arr[47] = true;  // [ / ]
+    arr[58] = true;  // [ : ]
+    arr[59] = true;  // [ ; ]
+    arr[60] = true;  // [ < ]
+    arr[61] = true;  // [ = ]
+    arr[62] = true;  // [ > ]
+    arr[63] = true;  // [ ? ]
+    arr[64] = true;  // [ @ ]
+    arr[91] = true;  // [ [ ]
+    arr[92] = true;  // [ \ ]
+    arr[93] = true;  // [ ] ]
+    arr[94] = true;  // [ ^ ]
+    arr[95] = true;  // [ _ ]
+    arr[96] = true;  // [ ` ]
+    arr[123] = true; // [ { ]
+    arr[124] = true; // [ | ]
+    arr[125] = true; // [ } ]
+    arr[126] = true; // [ ~ ]
+    arr
+};
 
 /// helper private trait to keep trait only accessable for `char`
 ///
@@ -73,7 +208,7 @@ impl Debug for TokenData {
 /// wrapper around `Arc<TokenData>`
 ///
 /// see [`token!`]
-pub(crate) type Token = Arc<TokenData>;
+pub type Token = Arc<TokenData>;
 
 /// A macro to easily create `TokenData` wrapped in `Arc`
 ///
@@ -250,27 +385,6 @@ macro_rules! define_punct_lexers {
             define_lex_fn!($fn_name, $char, $kind);
         )*
 
-        trait NeorgPunct: char::Sealed {
-            fn is_punctuation(&self) -> bool;
-        }
-
-        impl NeorgPunct for char {
-            /// # Punctuation
-            ///
-            /// A {** characters}[character] is considered *punctuation* if it is any of the following:
-            ///
-            /// - A standard ASCII punctuation character: `|!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~|`
-            /// - Anything in the general Unicode categories `Pc`, `Pd`, `Pe`, `Pf`, `Pi`, `Po` or `Ps`.
-            ///
-            /// -- NOTE: i have not included all general Unicode categories.
-            ///          These 7 categories contains almost 850 chars.
-            ///          Since, `Neorg` doesn't uses all of it. i don't see any point
-            ///          puting it all here.
-            fn is_punctuation(&self) -> bool {
-                matches!(self, $( $char )|*)
-            }
-        }
-
         use std::sync::LazyLock;
         use std::collections::HashMap;
 
@@ -415,7 +529,7 @@ macro_rules! T {
 /// - `source`: the input for lexing `&str`
 /// - `tokens`: stores the lexed [`Token`]
 #[derive(Debug)]
-pub(crate) struct Lexer<'a> {
+pub struct Lexer<'a> {
     source: &'a str,
     tokens: Vec<Token>,
 }
@@ -561,75 +675,6 @@ fn lex_text(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
 
     Some(token!(SyntaxKind::Word, text, len))
 }
-
-/// helper trait can only be implemented on char
-///
-/// `clippy` will complain about the `self` in trait.
-/// since we Sealed the trait on `char` puting `self` is fine
-#[allow(clippy::wrong_self_convention)]
-trait NeorgChar: char::Sealed {
-    fn is_neorg_char(&self) -> bool;
-    fn is_zs_whitespace(self) -> bool;
-    fn is_line_ending(self) -> bool;
-}
-
-#[rustfmt::skip]
-impl NeorgChar for char {
-    fn is_neorg_char(&self) -> bool {
-        self.is_punctuation() || self.is_zs_whitespace() || self.is_line_ending()
-    }
-
-    /// # Unicode Characters in the 'Separator, Space' Category
-    ///
-    /// <https://www.fileformat.info/info/unicode/category/Zs/list.htm>
-    #[inline(always)]
-    fn is_zs_whitespace(self) -> bool {
-        matches!(
-            self,
-            '\u{0020}' // SPACE
-          | '\u{00A0}' // NO-BREAK SPACE
-          | '\u{1680}' // OGHAM SPACE MARK
-          | '\u{2000}' // EN QUAD
-          | '\u{2001}' // EM QUAD
-          | '\u{2002}' // EN SPACE
-          | '\u{2003}' // EM SPACE
-          | '\u{2004}' // THREE-PER-EM SPACE
-          | '\u{2005}' // FOUR-PER-EM SPACE
-          | '\u{2006}' // SIX-PER-EM SPACE
-          | '\u{2007}' // FIGURE SPACE
-          | '\u{2008}' // PUNCTUATION SPACE
-          | '\u{2009}' // THIN SPACE
-          | '\u{200A}' // HAIR SPACE
-          | '\u{202F}' // NARROW NO-BREAK SPACE
-          | '\u{205F}' // MEDIUM MATHEMATICAL SPACE
-          | '\u{3000}' // IDEOGRAPHIC SPACE
-        )
-    }
-
-    /// # Line Endings
-    /// 
-    /// Line endings in Norg serve as a termination character.
-    /// They are used e.g. to terminate `paragraph segments`, `paragraphs`
-    /// and other elements like the endings of `range-able detached modifiers`.
-    /// They are not considered `whitespace`.
-    ///
-    /// The following chars are considered line endings:
-    /// 
-    /// - A line feed `U+000A` (\n)
-    /// - A form feed `U+000C`
-    /// - A carriage return `U+000D` (\r)
-    ///
-    /// The following line ending combinations are permitted:
-    /// 
-    /// - A single line feed
-    /// - A single carriage return
-    /// - A carriage return immediately followed by a line feed
-    #[inline(always)]
-    fn is_line_ending(self) -> bool {
-        matches!(self, '\u{000A}' | '\u{000C}' | '\u{000D}')
-    }
-}
-
 // The following chars are considered line endings:
 //
 // - `U+000A` — Line Feed (\n)

@@ -7,9 +7,7 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = r##" %this is comment%
-    i was soo fluminous.
-"##;
+    let source = r##"t/ this is italics/"##;
     let mut p = Parser::new(source);
 
     let cst = document(&mut p);
@@ -22,8 +20,12 @@ fn main() {
 
     #[cfg(feature = "tower-lsp")]
     {
-        let mut hl = crate::highlight::Highlight::new(cst);
-        let res = hl.get();
-        println!("{res:#?}");
+        cst.provide_semantic_tokens().iter().for_each(|s| {
+            println!(
+                "{},{},{},{},{}",
+                s.delta_line, s.delta_start, s.length, s.token_type, s.token_modifiers_bitset
+            );
+        });
     }
 }
+

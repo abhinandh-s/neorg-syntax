@@ -1,6 +1,5 @@
 ---
 source: src/grammer/am.rs
-assertion_line: 168
 expression: output
 ---
 Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
@@ -18,4 +17,3 @@ Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
   Word: "blah" [ offsets: 28, position: ( line: 0, col: 28 ) ] ]
   WhiteSpace: " " [ offsets: 32, position: ( line: 0, col: 32 ) ] ]
   Word: "blah" [ offsets: 33, position: ( line: 0, col: 33 ) ] ]
-  Error: "\0" (unexpected Eof) [ offsets: 37, position: ( line: 0, col: 37 ) ] ]

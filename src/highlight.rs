@@ -30,6 +30,40 @@ impl Highlight {
         }
     }
 
+    #[allow(unused)]
+    pub fn collect(&self) {
+        let mut token_type = 0u32;
+        let mut length = 0u32;
+        let mut delta_line = 0u32;
+        for i in &self.source {
+            length = i.len_utf16() as u32;
+            match i.kind() {
+                SyntaxKind::LineEnding => {
+                    length = i.len_utf16() as u32;
+                    delta_line = 1;
+                }
+                SyntaxKind::ParaBreak => {
+                    length = i.len_utf16() as u32;
+                    delta_line = 2;
+                }
+                SyntaxKind::Heading => {
+                    length = i.len_utf16() as u32;
+                    token_type = 9;
+                }
+                _ => {}
+            }
+            let sem = lsp::SemanticToken {
+                delta_line,
+                delta_start: todo!(),
+                length,
+                token_type,
+                token_modifiers_bitset: todo!(),
+            };
+            token_type = 0;
+            delta_line = 0;
+        }
+    }
+
     // covert lsp Range to delta
     // Range {
     //  start: Position {

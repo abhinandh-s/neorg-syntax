@@ -1,6 +1,5 @@
 //! # Attached Modifiers
 
-
 use super::*;
 
 /// Their name should be rather self-explanatory - both the opening and closing modifier
@@ -21,34 +20,26 @@ use super::*;
 /// - &variable& (verbatim) -11
 #[track_caller]
 pub(super) fn parse_attached_modifiers(p: &mut Parser) {
-    if p.prev()
-        .map(|f| ATTACHED_MODIFIERS.add(SyntaxKind::WhiteSpace).contains(f))
-        .is_none()
-    {
-        p.unexpected();
-    }
-    let last_cursor = p.cursor;
-    if let Some(kind) = p.get() {
-        match kind {
-            SyntaxKind::Asterisk => parse_bold(p),         // 1
-            SyntaxKind::Slash => parse_italics(p),         // 2
-            SyntaxKind::Underscore => parse_underline(p),  // 3
-            SyntaxKind::Exclamation => parse_spoiler(p),   // 4
-            SyntaxKind::Caret => parse_superscript(p),     // 5
-            SyntaxKind::Comma => parse_subscript(p),       // 6
-            SyntaxKind::Backtick => parse_inline_code(p),  // 7
-            SyntaxKind::Percent => parse_null_modifier(p), // 8
-            SyntaxKind::Dollar => parse_inline_maths(p),   // 9
-            SyntaxKind::Ampersand => parse_variable(p),    // 10
-            SyntaxKind::Hyphen => parse_strike_through(p), // 12
-            SyntaxKind::Pipe => parse_verbatim(p),         // 11
-            _ => parse_text_chunk(p),
-        }
-    }
-    p.assert_movement(last_cursor);
-    let c = p.current();
-    if !ATTACHED_MODIFIERS.add(SyntaxKind::WhiteSpace).contains(c) {
-        p.unexpected();
+    // if p.prev()
+    //     .map(|f| ATTACHED_MODIFIERS.add(SyntaxKind::WhiteSpace).contains(f))
+    //     .is_none()
+    // {
+    //     p.unexpected();
+    // }
+    match p.current() {
+        SyntaxKind::Asterisk => parse_bold(p),         // 1
+        SyntaxKind::Slash => parse_italics(p),         // 2
+        SyntaxKind::Underscore => parse_underline(p),  // 3
+        SyntaxKind::Exclamation => parse_spoiler(p),   // 4
+        SyntaxKind::Caret => parse_superscript(p),     // 5
+        SyntaxKind::Comma => parse_subscript(p),       // 6
+        SyntaxKind::Backtick => parse_inline_code(p),  // 7
+        SyntaxKind::Percent => parse_null_modifier(p), // 8
+        SyntaxKind::Dollar => parse_inline_maths(p),   // 9
+        SyntaxKind::Ampersand => parse_variable(p),    // 10
+        SyntaxKind::Hyphen => parse_strike_through(p), // 12
+        SyntaxKind::Pipe => parse_verbatim(p),         // 11
+        _ => (),
     }
 }
 
@@ -63,97 +54,144 @@ fn parse_text_chunk(p: &mut Parser) {
 }
 
 pub(super) fn parse_inline_code(p: &mut Parser) {
-    parse_modifier_block(p, T![Backtick], T![InlineCode], false);
+    parse_modifier_block(p, T![Backtick], T![InlineCode], false, true);
 }
 
 pub(super) fn parse_null_modifier(p: &mut Parser) {
-    parse_modifier_block(p, T![Percent], T![NullModifier], true);
+    parse_modifier_block(p, T![Percent], T![NullModifier], true, true);
 }
 
 fn parse_inline_maths(p: &mut Parser) {
-    parse_modifier_block(p, T![Dollar], T![InlineMath], false);
+    parse_modifier_block(p, T![Dollar], T![InlineMath], false, true);
 }
 
 fn parse_variable(p: &mut Parser) {
-    parse_modifier_block(p, T![Ampersand], T![Variable], true);
+    parse_modifier_block(p, T![Ampersand], T![Variable], true, true);
 }
 
 fn parse_strike_through(p: &mut Parser) {
-    parse_modifier_block(p, T![Hyphen], T![StrikeThrough], true);
+    parse_modifier_block(p, T![Hyphen], T![StrikeThrough], true, true);
 }
 
 fn parse_verbatim(p: &mut Parser) {
-    parse_modifier_block(p, T![Pipe], T![Verbatim], false);
+    parse_modifier_block(p, T![Pipe], T![Verbatim], false, true);
 }
 
 fn parse_subscript(p: &mut Parser) {
-    parse_modifier_block(p, T![Comma], T![Subscript], true);
+    parse_modifier_block(p, T![Comma], T![Subscript], true, true);
 }
 
 fn parse_superscript(p: &mut Parser) {
-    parse_modifier_block(p, T![Caret], T![Superscript], true);
+    parse_modifier_block(p, T![Caret], T![Superscript], true, true);
 }
 
 fn parse_spoiler(p: &mut Parser) {
-    parse_modifier_block(p, T![Exclamation], T![Spoiler], true);
+    parse_modifier_block(p, T![Exclamation], T![Spoiler], true, true);
 }
 
 fn parse_underline(p: &mut Parser) {
-    parse_modifier_block(p, T![Underscore], T![UnderLine], true);
+    parse_modifier_block(p, T![Underscore], T![UnderLine], true, true);
 }
 
 fn parse_italics(p: &mut Parser) {
-    parse_modifier_block(p, T![Slash], T![Italics], true);
+    parse_modifier_block(p, T![Slash], T![Italics], true, true);
 }
 
 fn parse_bold(p: &mut Parser) {
-    parse_modifier_block(p, T![Asterisk], T![Bold], true);
+    parse_modifier_block(p, T![Asterisk], T![Bold], true, true);
 }
 
-const MODIFIER_STOPER: SyntaxSet = syntax_set!(WhiteSpace, LineEnding, ParaBreak, Eof);
+const SPAN_HINT: &str = r#"can only span at maximum a single `paragraph`,
+i.e. they get terminated as soon as they encounter a `paragraph break`."#;
+// `Attached modifiers` can only span at maximum a single [`paragraph`],
+// i.e. they get terminated as soon as they encounter a [`paragraph break`].
+const MODIFIER_STOPER: SyntaxSet = syntax_set!(ParaBreak, Eof);
 
+fn opening_delimeter(p: &mut Parser, kind: SyntaxKind, trimmed: bool) {
+    p.bump(kind);
+    if trimmed && p.at(T![WhiteSpace]) {}
+}
+
+/*
+  # Attached Modifiers
+
+This section discusses attached modifiers (which originally gave rise to the name of {* detached
+  modifiers} as their natural counter-parts). Attached modifiers encapsulate some text within a
+  {** paragraphs}[paragraph] and change the way it is displayed in the document.
+  An attached modifier consists of two parts: the /opening modifier/ and the /closing modifier/.
+
+  Below are the general rules for attached modifiers:
+  - An opening modifier may only be preceded by {# whitespace} or {# punctuation}
+  - An opening modifier may _NOT_ be succeeded by {# whitespace}
+  - A closing modifier may _NOT_ be preceded by {# whitespace}
+  - A closing modifier may only be succeeded by {# whitespace} or {# punctuation}
+*/
 #[track_caller]
-fn parse_modifier_block(p: &mut Parser, kind: SyntaxKind, result: SyntaxKind, trimmed: bool) {
+fn parse_modifier_block(
+    p: &mut Parser,
+    kind: SyntaxKind,
+    result: SyntaxKind,
+    trimmed: bool,
+    nestable: bool,
+) {
     let m = p.start();
-    p.bump(kind); // eat the opening modifier 
-    if p.at(kind) {
-        p.unexpected_with_hint(format!("`{result}` block is empty"));
+    let mut resolver: usize = 0;
+
+    // == opening delimiter ==
+    let prev_token = p
+        .prev()
+        .filter(|k| k.is_punctuation() || *k == SyntaxKind::WhiteSpace)
+        .is_some();
+
+    match prev_token {
+        true => p.bump(kind), // is at `WhiteSpace` eat the opening modifier
+        false if p.cursor != 0 => {
+            if let Some(n) = p.nodes.last_mut() {
+                if n.kind() != SyntaxKind::WhiteSpace {
+                    n.unexpected_with_hint(
+                        "An opening modifier may only be preceded by `whitespace` or `punctuation`",
+                    );
+                }
+            }
+            p.bump(kind);
+        }
+        false => {} // cursor is at beginning so skip
     }
-    if trimmed && p.at(T![WhiteSpace]) {
-        p.unexpected_with_hint(format!("`{result}` should not start with `WhiteSpace`"));
+
+    if p.at(T![WhiteSpace]) {
+        p.unexpected_with_hint(format!(
+            "`{result}` should not start with `whitespace`\nconsider removing the `whitespace`"
+        ));
     }
-    // opening modifiers logic ends here
+
+    let cond = |kind: SyntaxKind| {
+        ATTACHED_MODIFIERS.add(SyntaxKind::Pipe).contains(kind) || MODIFIER_STOPER.contains(kind)
+    };
+
+    // == content ==
     looper!(!p.is_at_eof(), {
         match p.current() {
-            _ => parse_attached_modifiers(p),
+            // current is `Slash` & next is an ATTACHED_MODIFIERS or WhiteSpace or Eof
+            SyntaxKind::ParaBreak => {
+                resolver += 1;
+                p.unexpected_with_hint(format!("{result} {SPAN_HINT}"));
+                break;
+            }
+            kind if cond(kind) => break,
+            _ => p.eat(),
         }
-        // match p.at(kind) {
-        //     true if p.next().filter(|k| MODIFIER_STOPER.contains(*k)).is_some() => {
-        //         break;
-        //     }
-        //     true if p.next().filter(|k| T![Word] == *k).is_some() => {
-        //         p.eat();
-        //         continue;
-        //     }
-        //     true => {
-        //         p.eat();
-        //         continue;
-        //     }
-        //     false => parse_attached_modifiers(p),
-        // }
     });
-    
-    // panic!("{}", p.current());
-    // closing modifiers logic
-    if trimmed {
+
+    // == closing delimiter ==
+    if trimmed && resolver == 0 {
         if let Some(n) = p.nodes.last_mut() {
             if n.kind() == SyntaxKind::WhiteSpace {
                 n.unexpected(); // set the `WhiteSpace` before closing modifiers as unexpected
             }
         }
+        p.expect_closing_delimiter(m, kind); // eat the closing modifier.
     }
-   
-    // p.expect_closing_delimiter(m, kind); // eat the closing modifier.
+
     p.wrap(m, result);
 }
 
@@ -194,7 +232,7 @@ assert_tree!(
 
 assert_tree!(
     // [case:5/9] not so perfect italics
-    // error: WhiteSpace at both end
+    // error: WhiteSpace at both end (2 errors)
     italics,
     italics_05,
     parse_italics,
@@ -208,6 +246,15 @@ assert_tree!(
     italics_06,
     parse_italics,
     "/an italics \n text chunk/ blah blah blah"
+);
+
+assert_tree!(
+    // [case:6/9] not so perfect italics
+    // error: `LineEnding` inside text chunk
+    italics,
+    italics_12,
+    parse_italics,
+    "/an italics \n\n text chunk/ blah blah blah"
 );
 
 assert_tree!(

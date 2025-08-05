@@ -7,8 +7,8 @@ use am::*;
 
 mod dm;
 
-// document 
-// 
+// document
+//
 // - paragraph_break and line_break (x) // lexer will handle both line_break & paragraph_break
 // - paragraph (x)
 // - heading (x)
@@ -19,18 +19,18 @@ mod dm;
 //             | horizontal_line (X)
 //             | strong_paragraph_delimiter
 //
-#[track_caller]
 pub fn document(p: &mut Parser) -> SyntaxNode {
     let m = p.start();
 
-    while !p.is_at_eof() {
+    looper!(!p.is_at_eof(), {
         p.skip_whitespace();
 
         match p.current() {
             T![Asterisk] => heading(p),
             _ => paragraph(p),
         }
-    }
+    });
+    p.bump(T![Eof]);
     p.wrap(m, T![Document]);
     std::mem::take(&mut p.nodes[0])
 }
@@ -50,36 +50,42 @@ pub fn document(p: &mut Parser) -> SyntaxNode {
 // ),
 fn paragraph_segment(p: &mut Parser) {
     let m = p.start();
-    while !p.at_set(syntax_set!(Eof, LineEnding, ParaBreak)) {
-    let last_cursor = p.cursor;
+    looper!(!p.is_at_eof(), {
         match p.current() {
-            SyntaxKind::LCurly => p.eat(),
-            other if ATTACHED_MODIFIERS.contains(other) => {
-               paragraph_element(p); 
-            }
+            SyntaxKind::Eof | SyntaxKind::LineEnding | SyntaxKind::ParaBreak => break,
+            SyntaxKind::Slash => parse_attached_modifiers(p),
             _ => p.eat(),
         }
-        p.assert_movement(last_cursor);
-    }
-    match p.is_at_eof() {
-        true => {
-            p.eat();
-        }
-        false => {
-            let kind = p.current();
-            match kind {
-                SyntaxKind::LineEnding | SyntaxKind::ParaBreak => {
-                    eat_breaks(p);
-                }
-                _ => p.unexpected(),
-            }
-            p.bump_line();
-        }
-    }
+    });
+    // while !p.at_set(syntax_set!(Eof, LineEnding, ParaBreak)) {
+    //     let last_cursor = p.cursor;
+    //     match p.current() {
+    //         SyntaxKind::LCurly => p.eat(),
+    //         other if ATTACHED_MODIFIERS.contains(other) => {
+    //             paragraph_element(p);
+    //         }
+    //         _ => p.eat(),
+    //     }
+    //     p.assert_movement(last_cursor);
+    // }
+    // match p.is_at_eof() {
+    //     true if p.current() == SyntaxKind::Eof => p.eat(),
+    //     true => {}
+    //     false => {
+    //         let kind = p.current();
+    //         match kind {
+    //             SyntaxKind::LineEnding | SyntaxKind::ParaBreak => {
+    //                 eat_breaks(p);
+    //             }
+    //             _ => p.unexpected(),
+    //         }
+    //         p.bump_line();
+    //     }
+    // }
     p.wrap(m, T![ParaSegment]);
 }
 
-// paragraph_element => word 
+// paragraph_element => word
 //                      | space
 //                      | trailing_modifier
 //                      | link
@@ -132,7 +138,6 @@ fn paragraph(p: &mut Parser) {
         }
     });
 
-
     p.assert_movement(last_cursor);
 
     p.wrap(m, SyntaxKind::Paragraph);
@@ -150,6 +155,11 @@ fn heading(p: &mut Parser) {
     let m = p.start();
     p.eat_many(syntax_set!(Asterisk));
     p.expect(T![WhiteSpace]);
-    paragraph_segment(p);
+    looper!(!p.is_at_eof(), {
+        match p.current() {
+            SyntaxKind::Eof | SyntaxKind::LineEnding | SyntaxKind::ParaBreak => break,
+            _ => p.eat(),
+        }
+    });
     p.wrap(m, SyntaxKind::Heading);
 }

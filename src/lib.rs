@@ -53,6 +53,24 @@ macro_rules! looper {
 
 #[cfg(debug_assertions)]
 #[track_caller]
+pub fn dbg_looper<B>(p: &mut Parser, body: &mut B)
+where
+    B: FnMut(),
+{
+    let start = std::time::Instant::now();
+    while !p.is_at_eof() {
+        if start.elapsed() >= std::time::Duration::from_secs(1) {
+            panic!("Operation took more than 1 sec, possible infinite loop.");
+        }
+        let last_cursor = p.cursor; 
+        body();
+        p.assert_movement(last_cursor);
+    }
+}
+
+
+#[cfg(debug_assertions)]
+#[track_caller]
 pub fn looper<C, B>(cond: C, body: &mut B)
 where
     C: Fn() -> bool,

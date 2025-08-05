@@ -331,7 +331,7 @@ impl SyntaxNode {
     pub(super) fn unexpected(&mut self) {
         self.convert_to_error(format!("unexpected {}", self.kind().text()));
     }
-      /// Convert the child to an error stating it was unexpected.
+    /// Convert the child to an error stating it was unexpected.
     pub(super) fn unexpected_with_hint(&mut self, hint: impl Into<String>) {
         self.convert_to_error(format!("unexpected {}", self.kind().text()));
         self.hint(hint);
@@ -663,6 +663,70 @@ pub trait LocationTrait {
         tower_lsp::lsp_types::Range {
             start: self.start_position(),
             end: self.end_position(),
+        }
+    }
+}
+
+#[cfg(feature = "tower-lsp")]
+impl SyntaxNode {
+    #[allow(unused)]
+    pub fn provide_semantic_tokens(&self) -> Vec<tower_lsp::lsp_types::SemanticToken> {
+        let mut result: Vec<tower_lsp::lsp_types::SemanticToken> = Vec::new();
+        let mut delta_line = 0u32;
+        let mut delta_start = 0u32;
+        let mut token_type = 0u32;
+        println!("started");
+        Self::semantic_tokens(
+            self.clone(),
+            &mut delta_line,
+            &mut delta_start,
+            &mut token_type,
+            &mut result,
+        );
+        result
+    }
+    #[allow(unused, clippy::ptr_arg)]
+    fn semantic_tokens(
+        node: SyntaxNode,
+        delta_line: &mut u32,
+        delta_start: &mut u32,
+        token_type: &mut u32,
+        result: &mut Vec<tower_lsp::lsp_types::SemanticToken>,
+    ) {
+        match node.0 {
+            Repr::Leaf(leaf) => {
+                match leaf.kind() {
+                    SyntaxKind::LineEnding => {
+                        *delta_line += 1;
+                        *delta_start = 0;
+                    }
+                    SyntaxKind::ParaBreak => {
+                        *delta_line += 2;
+                        *delta_start = 0;
+                    }
+                    _ => (),
+                };
+                let ctx = tower_lsp::lsp_types::SemanticToken {
+                    delta_line: *delta_line,
+                    delta_start: *delta_start,
+                    length: leaf.len_utf16() as u32,
+                    token_type: *token_type,
+                    token_modifiers_bitset: 0,
+                };
+                result.push(ctx);
+                *delta_line = 0u32;
+                *delta_start = 0u32;
+            }
+            Repr::Inner(inner_node) => {
+                if inner_node.kind() == SyntaxKind::Heading {
+                    *token_type = 9;
+                }
+                for i in &inner_node.children {
+                    Self::semantic_tokens(i.clone(), delta_line, delta_start, token_type, result);
+                }
+                *token_type = 0;
+            }
+            Repr::Error(error_node) => {}
         }
     }
 }

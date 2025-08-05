@@ -1,0 +1,12 @@
+---
+source: src/grammer/am.rs
+assertion_line: 247
+expression: output
+---
+Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+  Slash: "/" [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+  Word: "an" [ offsets: 1, position: ( line: 0, col: 1 ) ] ]
+  WhiteSpace: " " [ offsets: 3, position: ( line: 0, col: 3 ) ] ]
+  Word: "italics" [ offsets: 4, position: ( line: 0, col: 4 ) ] ]
+  WhiteSpace: " " [ offsets: 11, position: ( line: 0, col: 11 ) ] ]
+  Error: "\n\n " (unexpected ParaBreak) [ offsets: 12, position: ( line: 0, col: 12 ) ] ]

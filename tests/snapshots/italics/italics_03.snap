@@ -1,0 +1,15 @@
+---
+source: src/grammer/am.rs
+expression: output
+---
+Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+  Slash: "/" [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+  Error: " " (unexpected WhiteSpace) [ offsets: 1, position: ( line: 0, col: 1 ) ] ]
+  Word: "an" [ offsets: 2, position: ( line: 0, col: 2 ) ] ]
+  WhiteSpace: " " [ offsets: 4, position: ( line: 0, col: 4 ) ] ]
+  Word: "italics" [ offsets: 5, position: ( line: 0, col: 5 ) ] ]
+  WhiteSpace: " " [ offsets: 12, position: ( line: 0, col: 12 ) ] ]
+  Word: "text" [ offsets: 13, position: ( line: 0, col: 13 ) ] ]
+  WhiteSpace: " " [ offsets: 17, position: ( line: 0, col: 17 ) ] ]
+  Word: "chunk" [ offsets: 18, position: ( line: 0, col: 18 ) ] ]
+  Slash: "/" [ offsets: 23, position: ( line: 0, col: 23 ) ] ]
