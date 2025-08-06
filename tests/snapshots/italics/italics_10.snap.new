@@ -1,0 +1,10 @@
+---
+source: src/grammer/am.rs
+assertion_line: 276
+expression: output
+---
+Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+  Slash: "/" [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+  Error: "/" (unexpected /) [ offsets: 1, position: ( line: 0, col: 1 ) ] ]
+  Word: "this" [ offsets: 2, position: ( line: 0, col: 2 ) ] ]
+  Slash: "/" [ offsets: 6, position: ( line: 0, col: 6 ) ] ]

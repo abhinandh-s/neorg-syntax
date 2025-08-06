@@ -1,5 +1,7 @@
 //! # Attached Modifiers
 
+use std::collections::HashMap;
+
 use super::*;
 
 /// Their name should be rather self-explanatory - both the opening and closing modifier
@@ -26,125 +28,93 @@ pub(super) fn parse_attached_modifiers(p: &mut Parser) {
     // {
     //     p.unexpected();
     // }
-    match p.current() {
-        SyntaxKind::Asterisk => parse_bold(p),         // 1
-        SyntaxKind::Slash => parse_italics(p),         // 2
-        SyntaxKind::Underscore => parse_underline(p),  // 3
-        SyntaxKind::Exclamation => parse_spoiler(p),   // 4
-        SyntaxKind::Caret => parse_superscript(p),     // 5
-        SyntaxKind::Comma => parse_subscript(p),       // 6
-        SyntaxKind::Backtick => parse_inline_code(p),  // 7
-        SyntaxKind::Percent => parse_null_modifier(p), // 8
-        SyntaxKind::Dollar => parse_inline_maths(p),   // 9
-        SyntaxKind::Ampersand => parse_variable(p),    // 10
-        SyntaxKind::Hyphen => parse_strike_through(p), // 12
-        SyntaxKind::Pipe => parse_verbatim(p),         // 11
-        _ => (),
+    let ref mut deli_stack: HashMap<SyntaxKind, usize> = HashMap::new();
+
+    let kind = p.current();
+    let delimiters = [
+        SyntaxKind::Asterisk,
+        SyntaxKind::Slash,
+        SyntaxKind::Underscore,
+        SyntaxKind::Exclamation,
+        SyntaxKind::Caret,
+        SyntaxKind::Comma,
+        SyntaxKind::Backtick,
+        SyntaxKind::Percent,
+        SyntaxKind::Dollar,
+        SyntaxKind::Ampersand,
+        SyntaxKind::Hyphen,
+        SyntaxKind::Pipe,
+    ];
+    if delimiters.contains(&kind) {
+        parse_delimetered(p, kind, deli_stack);
     }
 }
 
-fn parse_text_chunk(p: &mut Parser) {
-    looper!(!p.is_at_eof(), {
-        if p.at_set(ATTACHED_MODIFIERS) {
-            break;
-        } else {
-            p.eat();
-        }
-    });
-}
-
-pub(super) fn parse_inline_code(p: &mut Parser) {
-    parse_modifier_block(p, T![Backtick], T![InlineCode], false, true);
-}
-
-pub(super) fn parse_null_modifier(p: &mut Parser) {
-    parse_modifier_block(p, T![Percent], T![NullModifier], true, true);
-}
-
-fn parse_inline_maths(p: &mut Parser) {
-    parse_modifier_block(p, T![Dollar], T![InlineMath], false, true);
-}
-
-fn parse_variable(p: &mut Parser) {
-    parse_modifier_block(p, T![Ampersand], T![Variable], true, true);
-}
-
-fn parse_strike_through(p: &mut Parser) {
-    parse_modifier_block(p, T![Hyphen], T![StrikeThrough], true, true);
-}
-
-fn parse_verbatim(p: &mut Parser) {
-    parse_modifier_block(p, T![Pipe], T![Verbatim], false, true);
-}
-
-fn parse_subscript(p: &mut Parser) {
-    parse_modifier_block(p, T![Comma], T![Subscript], true, true);
-}
-
-fn parse_superscript(p: &mut Parser) {
-    parse_modifier_block(p, T![Caret], T![Superscript], true, true);
-}
-
-fn parse_spoiler(p: &mut Parser) {
-    parse_modifier_block(p, T![Exclamation], T![Spoiler], true, true);
-}
-
-fn parse_underline(p: &mut Parser) {
-    parse_modifier_block(p, T![Underscore], T![UnderLine], true, true);
-}
-
-fn parse_italics(p: &mut Parser) {
-    parse_modifier_block(p, T![Slash], T![Italics], true, true);
-}
-
-fn parse_bold(p: &mut Parser) {
-    parse_modifier_block(p, T![Asterisk], T![Bold], true, true);
-}
-
-const SPAN_HINT: &str = r#"can only span at maximum a single `paragraph`,
-i.e. they get terminated as soon as they encounter a `paragraph break`."#;
-// `Attached modifiers` can only span at maximum a single [`paragraph`],
-// i.e. they get terminated as soon as they encounter a [`paragraph break`].
-const MODIFIER_STOPER: SyntaxSet = syntax_set!(ParaBreak, Eof);
-
-fn opening_delimeter(p: &mut Parser, kind: SyntaxKind, trimmed: bool) {
-    p.bump(kind);
-    if trimmed && p.at(T![WhiteSpace]) {}
-}
-
-/*
-  # Attached Modifiers
-
-This section discusses attached modifiers (which originally gave rise to the name of {* detached
-  modifiers} as their natural counter-parts). Attached modifiers encapsulate some text within a
-  {** paragraphs}[paragraph] and change the way it is displayed in the document.
-  An attached modifier consists of two parts: the /opening modifier/ and the /closing modifier/.
-
-  Below are the general rules for attached modifiers:
-  - An opening modifier may only be preceded by {# whitespace} or {# punctuation}
-  - An opening modifier may _NOT_ be succeeded by {# whitespace}
-  - A closing modifier may _NOT_ be preceded by {# whitespace}
-  - A closing modifier may only be succeeded by {# whitespace} or {# punctuation}
-*/
-#[track_caller]
-fn parse_modifier_block(
+// # Attached Modifiers
+//
+// Attached modifiers encapsulate some text within a [paragraph] and change
+// the way it is displayed in the document.
+// An attached modifier consists of two parts:
+//  - the opening modifier
+//  - the closing modifier
+//
+// Below are the general rules for attached modifiers:
+// - An opening modifier may only be preceded by [whitespace] or [punctuation]
+// - An opening modifier may _NOT_ be succeeded by [whitespace]
+// - A closing modifier may _NOT_ be preceded by [whitespace]
+// - A closing modifier may only be succeeded by [whitespace] or [punctuation]
+fn parse_delimetered(
     p: &mut Parser,
     kind: SyntaxKind,
-    result: SyntaxKind,
-    trimmed: bool,
-    nestable: bool,
+    deli_stack: &mut HashMap<SyntaxKind, usize>,
 ) {
-    let m = p.start();
-    let mut resolver: usize = 0;
+    deli_stack.insert(kind, p.cursor);
+    println!(
+        ">> entered parse_delimetered for parsing {} at {}",
+        kind, p.cursor
+    );
+    let trimmed = !matches!(kind, T![Pipe]);
+    let _nestable = !matches!(kind, T![Caret] | T![Comma]);
+    let result = match kind {
+        SyntaxKind::Asterisk => SyntaxKind::Bold,
+        SyntaxKind::Slash => SyntaxKind::Italics,
+        SyntaxKind::Underscore => SyntaxKind::UnderLine,
+        SyntaxKind::Exclamation => SyntaxKind::Spoiler,
+        SyntaxKind::Caret => SyntaxKind::Superscript,
+        SyntaxKind::Comma => SyntaxKind::Comma,
+        SyntaxKind::Backtick => SyntaxKind::InlineCode,
+        SyntaxKind::Percent => SyntaxKind::NullModifier,
+        SyntaxKind::Dollar => SyntaxKind::Maths,
+        SyntaxKind::Ampersand => SyntaxKind::Variable,
+        SyntaxKind::Hyphen => SyntaxKind::StrikeThrough,
+        SyntaxKind::Pipe => SyntaxKind::Verbatim,
+        _ => panic!("Unreachable arm"),
+    };
 
+    let prev_token_cond = |k: SyntaxKind| {
+        k.is_punctuation()
+            || matches!(
+                k,
+                SyntaxKind::LineEnding
+                    | SyntaxKind::ParaBreak
+                    | SyntaxKind::WhiteSpace
+                    | SyntaxKind::Tab
+            )
+    };
+
+
+    let is_closing_delimiter = |k: SyntaxKind| {
+        match p.next() {
+            Some(k) => k == SyntaxKind,
+            None => true,
+        }
+    };
+
+    let m = p.start();
     // == opening delimiter ==
-    let prev_token = p
-        .prev()
-        .filter(|k| k.is_punctuation() || *k == SyntaxKind::WhiteSpace)
-        .is_some();
+    let prev_token = p.prev().filter(|k| prev_token_cond(*k)).is_some();
 
     match prev_token {
-        true => p.bump(kind), // is at `WhiteSpace` eat the opening modifier
         false if p.cursor != 0 => {
             if let Some(n) = p.nodes.last_mut() {
                 if n.kind() != SyntaxKind::WhiteSpace {
@@ -153,53 +123,77 @@ fn parse_modifier_block(
                     );
                 }
             }
-            p.bump(kind);
         }
-        false => {} // cursor is at beginning so skip
+        _ => {} // is at allowed token so skip
     }
+    p.bump(kind);
 
-    if p.at(T![WhiteSpace]) {
+    if p.at(T![WhiteSpace]) && trimmed {
         p.unexpected_with_hint(format!(
             "`{result}` should not start with `whitespace`\nconsider removing the `whitespace`"
         ));
+    } else if p.at(kind) {
+        p.unexpected_with_hint(format!(
+            "a single `{}` is nessessary\nconsider removing redundant `{}`",
+            kind.text(),
+            kind.text()
+        ));
     }
-
-    let cond = |kind: SyntaxKind| {
-        ATTACHED_MODIFIERS.add(SyntaxKind::Pipe).contains(kind) || MODIFIER_STOPER.contains(kind)
-    };
 
     // == content ==
     looper!(!p.is_at_eof(), {
         match p.current() {
             // current is `Slash` & next is an ATTACHED_MODIFIERS or WhiteSpace or Eof
             SyntaxKind::ParaBreak => {
-                resolver += 1;
                 p.unexpected_with_hint(format!("{result} {SPAN_HINT}"));
-                break;
+                p.recover_until(kind);
+                return;
             }
-            kind if cond(kind) => break,
+            SyntaxKind::Eof => break,
+            SyntaxKind::Pipe => {
+                println!("mathed pipe at {}", p.cursor);
+                if deli_stack.get(&SyntaxKind::Pipe).is_none() {
+                    parse_delimetered(p, SyntaxKind::Pipe, deli_stack)
+                } else {
+                    break;
+                }
+            }
+            k if ATTACHED_MODIFIERS.contains(k) => {
+                if kind == k {
+                    break;
+                } else if deli_stack.get(&SyntaxKind::Pipe).is_none() {
+                    parse_delimetered(p, k, deli_stack);
+                } else {
+                    break;
+                }
+            }
             _ => p.eat(),
         }
     });
 
     // == closing delimiter ==
-    if trimmed && resolver == 0 {
+    if trimmed {
         if let Some(n) = p.nodes.last_mut() {
             if n.kind() == SyntaxKind::WhiteSpace {
                 n.unexpected(); // set the `WhiteSpace` before closing modifiers as unexpected
             }
         }
-        p.expect_closing_delimiter(m, kind); // eat the closing modifier.
     }
 
+    p.expect_closing_delimiter(m, kind); // eat the closing modifier.
     p.wrap(m, result);
+
+    deli_stack.remove(&kind);
 }
+
+const SPAN_HINT: &str = r#"can only span at maximum a single `paragraph`,
+i.e. they get terminated as soon as they encounter a `paragraph break`."#;
 
 assert_tree!(
     // [case:1/9] perfect italics (x)
     italics,
     italics_01,
-    parse_italics,
+    parse_attached_modifiers,
     "/an italics text chunk/ blah blah blah"
 );
 
@@ -208,7 +202,7 @@ assert_tree!(
     // error: Unclosed delimiter
     italics,
     italics_02,
-    parse_italics,
+    parse_attached_modifiers,
     "/an italics text chunk blah blah blah"
 );
 
@@ -217,7 +211,7 @@ assert_tree!(
     // error: WhiteSpace at beginning
     italics,
     italics_03,
-    parse_italics,
+    parse_attached_modifiers,
     "/ an italics text chunk/ blah blah blah"
 );
 
@@ -226,7 +220,7 @@ assert_tree!(
     // error: WhiteSpace at end
     italics,
     italics_04,
-    parse_italics,
+    parse_attached_modifiers,
     "/an italics text chunk / blah blah blah"
 );
 
@@ -235,7 +229,7 @@ assert_tree!(
     // error: WhiteSpace at both end (2 errors)
     italics,
     italics_05,
-    parse_italics,
+    parse_attached_modifiers,
     "/ an italics text chunk / blah blah blah"
 );
 
@@ -244,7 +238,7 @@ assert_tree!(
     // error: `LineEnding` inside text chunk
     italics,
     italics_06,
-    parse_italics,
+    parse_attached_modifiers,
     "/an italics \n text chunk/ blah blah blah"
 );
 
@@ -253,7 +247,7 @@ assert_tree!(
     // error: `LineEnding` inside text chunk
     italics,
     italics_12,
-    parse_italics,
+    parse_attached_modifiers,
     "/an italics \n\n text chunk/ blah blah blah"
 );
 
@@ -262,7 +256,7 @@ assert_tree!(
     // feat: other inline elements inside this ATACHED_MODIFIERS
     italics,
     italics_07,
-    parse_italics,
+    parse_attached_modifiers,
     "/an italics text chunk and it have a | verbatim | chunk in it :)/ blah blah blah"
 );
 
@@ -271,7 +265,7 @@ assert_tree!(
     // feat: /this/is still italics/ - cuz no space after `/`
     italics,
     italics_08,
-    parse_italics,
+    parse_attached_modifiers,
     "/an italics text chunk and it have a | verbatim | chunk in it :)/blah/ blah blah"
 );
 
@@ -280,7 +274,7 @@ assert_tree!(
     // feat: /this/ is not fully italics/ - cuz space after `/`
     italics,
     italics_09,
-    parse_italics,
+    parse_attached_modifiers,
     "/an italics text chunk and it have a | verbatim | chunk in it :)/ blah/ blah blah"
 );
 
@@ -289,7 +283,7 @@ assert_tree!(
     // feat: /this/ is not fully italics/ - cuz space after `/`
     italics,
     italics_10,
-    parse_italics,
+    parse_attached_modifiers,
     "//this//"
 );
 
@@ -298,6 +292,6 @@ assert_tree!(
     // feat: /this/ is not fully italics/ - cuz space after `/`
     italics,
     italics_11,
-    parse_italics,
+    parse_attached_modifiers,
     "//this is *bold* //"
 );

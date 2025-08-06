@@ -124,7 +124,6 @@ impl Parser {
     #[track_caller]
     pub(crate) fn eat(&mut self) {
         assert!(self.cursor < self.tokens.len());
-        dbg!("{}", &self.tokens[self.cursor]);
         // Token `foobar`
         //
         // start_offset = 0,
@@ -278,21 +277,46 @@ impl Parser {
         self.balanced = balanced;
     }
 
+    pub fn recover_until(&mut self, kind: SyntaxKind) {
+        self.iter_while(Some(Either::Left(kind)), |p: &mut Self| {
+            p.eat();
+        });
+    }
+
     /// parse with infinite loop gaurd on debug mode
-    pub fn parse_while<P>(&mut self, stop: SyntaxSet, mut parse_fn: P)
+    ///
+    /// checks `is_at_eof` condition by default
+    ///
+    /// if we make it like must return bool cuz we can't use break in closures but
+    /// we can mimic `break` by returning early with `return false;`
+    pub fn iter_while<P>(&mut self, stop: Option<Either<SyntaxKind, SyntaxSet>>, mut parse_fn: P)
     where
         P: FnMut(&mut Self),
     {
         #[cfg(debug_assertions)]
-        let start = std::time::Instant::now();
-        while !self.is_at_eof() || !self.at_set(stop) {
+        let (start, ref mut count) = (std::time::Instant::now(), 0_usize);
+        while !self.is_at_eof() || stop.clone().is_some_and(|set| match set {
+            Either::Left(kind) => { kind == self.current()},
+            Either::Right(set) => {
+                !self.at_set(set)
+            }
+        }) {
             #[cfg(debug_assertions)]
             {
+                *count += 1;
                 if start.elapsed() >= std::time::Duration::from_secs(1) {
-                    panic!("Operation took more than 1 sec, possible infinite loop.");
+                    panic!(
+                        "Operation took more than 1 sec and done {count} iterations, possible infinite loop."
+                    );
                 }
             }
             parse_fn(self);
         }
     }
+}
+
+#[derive(Clone)]
+pub enum Either<L, R> {
+    Left(L),
+    Right(R)
 }
