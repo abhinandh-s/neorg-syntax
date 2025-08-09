@@ -1,0 +1,6 @@
+---
+source: src/grammer/am.rs
+assertion_line: 249
+expression: output
+---
+Error: "/" (unexpected /) [ offsets: 0, position: ( line: 0, col: 0 ) ] ]

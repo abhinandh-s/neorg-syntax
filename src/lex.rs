@@ -8,11 +8,11 @@
     clippy::redundant_as_str
 )]
 
-use std::sync::Arc;
-use std::str::Chars;
-use std::iter::Peekable;
-use std::fmt::Display;
 use std::fmt::Debug;
+use std::fmt::Display;
+use std::iter::Peekable;
+use std::str::Chars;
+use std::sync::Arc;
 
 use crate::SyntaxKind;
 
@@ -191,6 +191,11 @@ impl TokenData {
     /// Returns the is empty of this [`TokenData`].
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Converts the kind of token to given kind
+    pub fn set_kind(&mut self, kind: SyntaxKind) {
+        self.kind = kind;
     }
 }
 
@@ -582,7 +587,7 @@ impl<'a> Lexer<'a> {
 
         self.tokens
             .push(token!(SyntaxKind::Eof, '\0', '\0'.len_utf16()));
-        self.tokens.clone().iter().for_each(|t| println!("{t}"));
+        // self.tokens.clone().iter().for_each(|t| println!("{t}"));
         std::mem::take(&mut self.tokens)
     }
 }

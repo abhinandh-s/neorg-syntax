@@ -115,7 +115,7 @@ impl SyntaxKind {
     }
 
     pub const fn as_attached_modifers(&self) -> Option<Self> {
-        match k {
+        match self {
             SyntaxKind::Asterisk => Some(SyntaxKind::Bold),
             SyntaxKind::Slash => Some(SyntaxKind::Italics),
             SyntaxKind::Underscore => Some(SyntaxKind::UnderLine),
@@ -133,7 +133,7 @@ impl SyntaxKind {
     }
 
     pub fn as_attached_modifers_unchecked(&self) -> Self {
-        match k {
+        match self {
             SyntaxKind::Asterisk => SyntaxKind::Bold,
             SyntaxKind::Slash => SyntaxKind::Italics,
             SyntaxKind::Underscore => SyntaxKind::UnderLine,

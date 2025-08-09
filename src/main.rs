@@ -7,7 +7,7 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = r##"/an italics text chunk and it have a | verbatim | chunk in it :)/ blah blah blah"##;
+    let source = r##"/an italics text chunk and it have a | !"#$%&'()*+,-./:;<=>?@[\]^_`{}~verbatim | chunk in it :)/ blah blah blah"##;
     let mut p = Parser::new(source);
 
     let cst = document(&mut p);

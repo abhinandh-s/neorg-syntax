@@ -22,6 +22,31 @@ const DELIMITER_PAIR: [SyntaxKind; 12] = [
 const SPAN_HINT: &str = r#"can only span at maximum a single `paragraph`,
 i.e. they get terminated as soon as they encounter a `paragraph break`."#;
 
+fn is_valid_op_delimeter(p: &mut Parser) -> bool {
+    // - condition 1: An opening modifier may only be preceded by [whitespace] or [punctuation]
+    let prev_no_word = p.prev().filter(|k| *k != T![Word]).is_some();
+    // - condition 2: An opening modifier may _NOT_ be succeeded by [whitespace]
+    let next_no_white_sp = p.next().filter(|k| *k != T![WhiteSpace]).is_some();
+    matches!((prev_no_word, next_no_white_sp), (true, true))
+}
+
+fn is_valid_cl_delimeter(p: &mut Parser) -> bool {
+    // - condition 1: A closing modifier may _NOT_ be preceded by [whitespace]
+    let prev_no_white_sp = p.prev().filter(|k| *k != T![WhiteSpace]).is_some();
+    // - condition 2: A closing modifier may only be succeeded by [whitespace] or [punctuation]
+    let next_no_word = p.next().filter(|k| *k != T![Word]).is_some();
+    matches!((next_no_word, prev_no_white_sp), (true, true))
+}
+
+/// [  ][punctuation char][  ]
+///  ^                     ^  
+///  both prev and next are word
+fn is_word(p: &mut Parser) -> bool {
+    let prev = p.prev().filter(|k| *k == T![Word]).is_some();
+    let next = p.next().filter(|k| *k == T![Word]).is_some();
+    matches!((next, prev), (true, true))
+}
+
 /// Their name should be rather self-explanatory - both the opening and closing modifier
 /// are _attached_ to one another.
 ///
@@ -42,17 +67,11 @@ i.e. they get terminated as soon as they encounter a `paragraph break`."#;
 pub(super) fn parse_attached_modifiers(p: &mut Parser) {
     match is_word(p) {
         true => {
-            p.eat();
+            p.covert_and_eat(T![Word]);
         }
         false => {
             match is_valid_op_delimeter(p) {
                 true => {
-                    // if p.prev()
-                    //     .map(|f| ATTACHED_MODIFIERS.add(SyntaxKind::WhiteSpace).contains(f))
-                    //     .is_none()
-                    // {
-                    //     p.unexpected();
-                    // }
                     let deli_stack: &mut HashMap<SyntaxKind, usize> = &mut HashMap::new();
 
                     let kind = p.current();
@@ -60,46 +79,15 @@ pub(super) fn parse_attached_modifiers(p: &mut Parser) {
                         parse_delimetered(p, kind, deli_stack);
                     }
                 }
-                false => {
-                    // return some error here
-                    return;
-                }
+                false => p.unexpected(), // with hint later
             }
         }
     }
 }
 
-fn is_valid_op_delimeter(p: &mut Parser) -> bool {
-    // - condition 1: An opening modifier may only be preceded by [whitespace] or [punctuation]
-    let prev_no_word = p.prev().filter(|k| *k != T![Word]).is_some();
-    // - condition 2: An opening modifier may _NOT_ be succeeded by [whitespace]
-    let next_no_white_sp = p.next().filter(|k| *k != T![WhiteSpace]).is_some();
-    match (prev_no_word, next_no_white_sp) {
-        (true, true) => true,
-        _ => false,
-    }
-}
-
-fn is_valid_cl_delimeter(p: &mut Parser) -> bool {
-    // - condition 1: A closing modifier may _NOT_ be preceded by [whitespace]
-    let prev_no_white_sp = p.prev().filter(|k| *k != T![WhiteSpace]).is_some();
-    // - condition 2: A closing modifier may only be succeeded by [whitespace] or [punctuation]
-    let next_no_word = p.next().filter(|k| *k != T![Word]).is_some();
-    match (next_no_word, prev_no_white_sp) {
-        (true, true) => true,
-        _ => false,
-    }
-}
-
-/// [  ][punctuation char][  ]
-///  ^                     ^  
-///  both prev and next are word
-fn is_word(p: &mut Parser) -> bool {
-    let prev = p.prev().filter(|k| *k == T![Word]).is_some();
-    let next = p.next().filter(|k| *k == T![Word]).is_some();
-    match (next, prev) {
-        (true, true) => true,
-        _ => false,
+fn parse_verbatim_block(p: &mut Parser) {
+    while !p.at_set(syntax_set!(Eof, Pipe, ParaBreak)) {
+        p.eat()
     }
 }
 
@@ -121,6 +109,9 @@ fn parse_delimetered(
     kind: SyntaxKind,
     deli_stack: &mut HashMap<SyntaxKind, usize>,
 ) {
+    if is_word(p) {
+        p.eat();
+    }
     deli_stack.insert(kind, p.cursor);
     println!(
         ">> entered parse_delimetered for parsing {} at {}",
@@ -170,35 +161,39 @@ fn parse_delimetered(
     }
 
     // == content ==
-    looper!(!p.is_at_eof(), {
-        match p.current() {
-            // current is `Slash` & next is an ATTACHED_MODIFIERS or WhiteSpace or Eof
-            SyntaxKind::ParaBreak => {
-                p.unexpected_with_hint(format!("{result} {SPAN_HINT}"));
-                p.recover_until(kind);
-                return;
-            }
-            SyntaxKind::Eof => break,
-            SyntaxKind::Pipe => {
-                println!("mathed pipe at {}", p.cursor);
-                if deli_stack.get(&SyntaxKind::Pipe).is_none() {
-                    parse_delimetered(p, SyntaxKind::Pipe, deli_stack)
-                } else {
-                    break;
+    if kind == SyntaxKind::Pipe {
+        parse_verbatim_block(p);
+    } else {
+        while !p.is_at_eof() {
+            match p.current() {
+                // current is `Slash` & next is an ATTACHED_MODIFIERS or WhiteSpace or Eof
+                SyntaxKind::ParaBreak => {
+                    p.unexpected_with_hint(format!("{result} {SPAN_HINT}"));
+                    p.recover_until(kind);
+                    return;
                 }
-            }
-            k if ATTACHED_MODIFIERS.contains(k) => {
-                if kind == k {
-                    break;
-                } else if deli_stack.get(&SyntaxKind::Pipe).is_none() {
-                    parse_delimetered(p, k, deli_stack);
-                } else {
-                    break;
+                SyntaxKind::Eof => break,
+                SyntaxKind::Pipe => {
+                    println!("mathed pipe at {}", p.cursor);
+                    if deli_stack.get(&SyntaxKind::Pipe).is_none() {
+                        parse_delimetered(p, SyntaxKind::Pipe, deli_stack);
+                    } else {
+                        break;
+                    }
                 }
+                k if ATTACHED_MODIFIERS.contains(k) => {
+                    if kind == k {
+                        break;
+                    } else if deli_stack.get(&SyntaxKind::Pipe).is_none() {
+                        parse_delimetered(p, k, deli_stack);
+                    } else {
+                        break;
+                    }
+                }
+                _ => p.eat(),
             }
-            _ => p.eat(),
         }
-    });
+    }
 
     // == closing delimiter ==
     if trimmed {

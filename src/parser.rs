@@ -199,6 +199,14 @@ impl Parser {
         }
     }
 
+    /// convert to given kind but not for error
+    pub(crate) fn covert_and_eat(&mut self, kind: SyntaxKind) {
+        self.eat();
+        if let Some(node) = self.nodes.last_mut() {
+            node.convert_to_kind(kind);
+        }
+    }
+
     /// Eat the current node and return a reference for in-place mutation.
     #[track_caller]
     pub(crate) fn eat_and_get(&mut self) -> &mut SyntaxNode {
@@ -295,12 +303,12 @@ impl Parser {
     {
         #[cfg(debug_assertions)]
         let (start, ref mut count) = (std::time::Instant::now(), 0_usize);
-        while !self.is_at_eof() || stop.clone().is_some_and(|set| match set {
-            Either::Left(kind) => { kind == self.current()},
-            Either::Right(set) => {
-                !self.at_set(set)
-            }
-        }) {
+        while !self.is_at_eof()
+            || stop.clone().is_some_and(|set| match set {
+                Either::Left(kind) => kind == self.current(),
+                Either::Right(set) => !self.at_set(set),
+            })
+        {
             #[cfg(debug_assertions)]
             {
                 *count += 1;
@@ -318,5 +326,5 @@ impl Parser {
 #[derive(Clone)]
 pub enum Either<L, R> {
     Left(L),
-    Right(R)
+    Right(R),
 }

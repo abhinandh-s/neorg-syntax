@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::{Location, Span, SyntaxKind, Token, token};
+use crate::{Location, Span, SyntaxKind, Token, TokenData, token};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxNode(Repr);
@@ -312,6 +312,16 @@ impl SyntaxNode {
         }
     }
 
+    /// Convert the leaf node to the given kind, if it isn't already one.
+    pub(super) fn convert_to_kind(&mut self, kind: SyntaxKind) {
+        debug_assert!(!kind.is_error());
+        match &mut self.0 {
+            Repr::Leaf(leaf_node) => leaf_node.set_kind(kind),
+            Repr::Inner(inner_node) => Arc::make_mut(inner_node).kind = kind,
+            Repr::Error(_) => panic!("cannot convert error"),
+        }
+    }
+
     /// Convert the child to an error, if it isn't already one.
     pub(super) fn convert_to_error(&mut self, message: impl Into<String>) {
         if !self.kind().is_error() {
@@ -387,6 +397,10 @@ impl LeafNode {
 
     fn kind(&self) -> SyntaxKind {
         self.token.kind()
+    }
+
+    fn set_kind(&mut self, kind: SyntaxKind) {
+        Arc::make_mut(&mut self.token).set_kind(kind);
     }
 
     fn text(&self) -> &str {
