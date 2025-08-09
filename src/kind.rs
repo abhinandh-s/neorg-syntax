@@ -113,4 +113,40 @@ impl SyntaxKind {
                 | SyntaxKind::Hyphen // StrikeThrough
         )
     }
+
+    pub const fn as_attached_modifers(&self) -> Option<Self> {
+        match k {
+            SyntaxKind::Asterisk => Some(SyntaxKind::Bold),
+            SyntaxKind::Slash => Some(SyntaxKind::Italics),
+            SyntaxKind::Underscore => Some(SyntaxKind::UnderLine),
+            SyntaxKind::Exclamation => Some(SyntaxKind::Spoiler),
+            SyntaxKind::Caret => Some(SyntaxKind::Superscript),
+            SyntaxKind::Comma => Some(SyntaxKind::Comma),
+            SyntaxKind::Backtick => Some(SyntaxKind::InlineCode),
+            SyntaxKind::Percent => Some(SyntaxKind::NullModifier),
+            SyntaxKind::Dollar => Some(SyntaxKind::Maths),
+            SyntaxKind::Ampersand => Some(SyntaxKind::Variable),
+            SyntaxKind::Hyphen => Some(SyntaxKind::StrikeThrough),
+            SyntaxKind::Pipe => Some(SyntaxKind::Verbatim),
+            _ => None,
+        }
+    }
+
+    pub fn as_attached_modifers_unchecked(&self) -> Self {
+        match k {
+            SyntaxKind::Asterisk => SyntaxKind::Bold,
+            SyntaxKind::Slash => SyntaxKind::Italics,
+            SyntaxKind::Underscore => SyntaxKind::UnderLine,
+            SyntaxKind::Exclamation => SyntaxKind::Spoiler,
+            SyntaxKind::Caret => SyntaxKind::Superscript,
+            SyntaxKind::Comma => SyntaxKind::Comma,
+            SyntaxKind::Backtick => SyntaxKind::InlineCode,
+            SyntaxKind::Percent => SyntaxKind::NullModifier,
+            SyntaxKind::Dollar => SyntaxKind::Maths,
+            SyntaxKind::Ampersand => SyntaxKind::Variable,
+            SyntaxKind::Hyphen => SyntaxKind::StrikeThrough,
+            SyntaxKind::Pipe => SyntaxKind::Verbatim,
+            _ => panic!("can't cast {} to attached modifers", self),
+        }
+    }
 }

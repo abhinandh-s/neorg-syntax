@@ -7,6 +7,32 @@ use am::*;
 
 mod dm;
 
+#[derive(Debug)]
+pub(crate) struct DocLink {
+    line: u32,
+}
+
+impl DocLink {
+    pub(crate) const fn new(line: u32) -> Self {
+        Self { line }
+    }
+}
+
+impl std::fmt::Display for DocLink {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "https://github.com/nvim-neorg/norg-specs/blob/main/1.0-specification.norg#L{}",
+            self.line
+        )
+    }
+}
+
+pub enum NeorgLint {
+    EmptyAtModifiers,
+    EmptyLink,
+}
+
 // document
 //
 // - paragraph_break and line_break (x) // lexer will handle both line_break & paragraph_break

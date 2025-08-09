@@ -4,6 +4,24 @@ use std::collections::HashMap;
 
 use super::*;
 
+const DELIMITER_PAIR: [SyntaxKind; 12] = [
+    SyntaxKind::Asterisk,
+    SyntaxKind::Slash,
+    SyntaxKind::Underscore,
+    SyntaxKind::Exclamation,
+    SyntaxKind::Caret,
+    SyntaxKind::Comma,
+    SyntaxKind::Backtick,
+    SyntaxKind::Percent,
+    SyntaxKind::Dollar,
+    SyntaxKind::Ampersand,
+    SyntaxKind::Hyphen,
+    SyntaxKind::Pipe,
+];
+
+const SPAN_HINT: &str = r#"can only span at maximum a single `paragraph`,
+i.e. they get terminated as soon as they encounter a `paragraph break`."#;
+
 /// Their name should be rather self-explanatory - both the opening and closing modifier
 /// are _attached_ to one another.
 ///
@@ -22,31 +40,66 @@ use super::*;
 /// - &variable& (verbatim) -11
 #[track_caller]
 pub(super) fn parse_attached_modifiers(p: &mut Parser) {
-    // if p.prev()
-    //     .map(|f| ATTACHED_MODIFIERS.add(SyntaxKind::WhiteSpace).contains(f))
-    //     .is_none()
-    // {
-    //     p.unexpected();
-    // }
-    let ref mut deli_stack: HashMap<SyntaxKind, usize> = HashMap::new();
+    match is_word(p) {
+        true => {
+            p.eat();
+        }
+        false => {
+            match is_valid_op_delimeter(p) {
+                true => {
+                    // if p.prev()
+                    //     .map(|f| ATTACHED_MODIFIERS.add(SyntaxKind::WhiteSpace).contains(f))
+                    //     .is_none()
+                    // {
+                    //     p.unexpected();
+                    // }
+                    let deli_stack: &mut HashMap<SyntaxKind, usize> = &mut HashMap::new();
 
-    let kind = p.current();
-    let delimiters = [
-        SyntaxKind::Asterisk,
-        SyntaxKind::Slash,
-        SyntaxKind::Underscore,
-        SyntaxKind::Exclamation,
-        SyntaxKind::Caret,
-        SyntaxKind::Comma,
-        SyntaxKind::Backtick,
-        SyntaxKind::Percent,
-        SyntaxKind::Dollar,
-        SyntaxKind::Ampersand,
-        SyntaxKind::Hyphen,
-        SyntaxKind::Pipe,
-    ];
-    if delimiters.contains(&kind) {
-        parse_delimetered(p, kind, deli_stack);
+                    let kind = p.current();
+                    if DELIMITER_PAIR.contains(&kind) {
+                        parse_delimetered(p, kind, deli_stack);
+                    }
+                }
+                false => {
+                    // return some error here
+                    return;
+                }
+            }
+        }
+    }
+}
+
+fn is_valid_op_delimeter(p: &mut Parser) -> bool {
+    // - condition 1: An opening modifier may only be preceded by [whitespace] or [punctuation]
+    let prev_no_word = p.prev().filter(|k| *k != T![Word]).is_some();
+    // - condition 2: An opening modifier may _NOT_ be succeeded by [whitespace]
+    let next_no_white_sp = p.next().filter(|k| *k != T![WhiteSpace]).is_some();
+    match (prev_no_word, next_no_white_sp) {
+        (true, true) => true,
+        _ => false,
+    }
+}
+
+fn is_valid_cl_delimeter(p: &mut Parser) -> bool {
+    // - condition 1: A closing modifier may _NOT_ be preceded by [whitespace]
+    let prev_no_white_sp = p.prev().filter(|k| *k != T![WhiteSpace]).is_some();
+    // - condition 2: A closing modifier may only be succeeded by [whitespace] or [punctuation]
+    let next_no_word = p.next().filter(|k| *k != T![Word]).is_some();
+    match (next_no_word, prev_no_white_sp) {
+        (true, true) => true,
+        _ => false,
+    }
+}
+
+/// [  ][punctuation char][  ]
+///  ^                     ^  
+///  both prev and next are word
+fn is_word(p: &mut Parser) -> bool {
+    let prev = p.prev().filter(|k| *k == T![Word]).is_some();
+    let next = p.next().filter(|k| *k == T![Word]).is_some();
+    match (next, prev) {
+        (true, true) => true,
+        _ => false,
     }
 }
 
@@ -75,40 +128,16 @@ fn parse_delimetered(
     );
     let trimmed = !matches!(kind, T![Pipe]);
     let _nestable = !matches!(kind, T![Caret] | T![Comma]);
-    let result = match kind {
-        SyntaxKind::Asterisk => SyntaxKind::Bold,
-        SyntaxKind::Slash => SyntaxKind::Italics,
-        SyntaxKind::Underscore => SyntaxKind::UnderLine,
-        SyntaxKind::Exclamation => SyntaxKind::Spoiler,
-        SyntaxKind::Caret => SyntaxKind::Superscript,
-        SyntaxKind::Comma => SyntaxKind::Comma,
-        SyntaxKind::Backtick => SyntaxKind::InlineCode,
-        SyntaxKind::Percent => SyntaxKind::NullModifier,
-        SyntaxKind::Dollar => SyntaxKind::Maths,
-        SyntaxKind::Ampersand => SyntaxKind::Variable,
-        SyntaxKind::Hyphen => SyntaxKind::StrikeThrough,
-        SyntaxKind::Pipe => SyntaxKind::Verbatim,
-        _ => panic!("Unreachable arm"),
-    };
+    let result = kind.as_attached_modifers_unchecked();
 
-    let prev_token_cond = |k: SyntaxKind| {
-        k.is_punctuation()
-            || matches!(
-                k,
-                SyntaxKind::LineEnding
-                    | SyntaxKind::ParaBreak
-                    | SyntaxKind::WhiteSpace
-                    | SyntaxKind::Tab
-            )
-    };
+    let prev_token_cond = |k: SyntaxKind| !matches!(k, | SyntaxKind::Word);
 
-
-    let is_closing_delimiter = |k: SyntaxKind| {
-        match p.next() {
-            Some(k) => k == SyntaxKind,
-            None => true,
-        }
-    };
+    // let is_closing_delimiter = |k: SyntaxKind| {
+    //     match p.next() {
+    //         Some(k) => k == SyntaxKind,
+    //         None => true,
+    //     }
+    // };
 
     let m = p.start();
     // == opening delimiter ==
@@ -118,9 +147,9 @@ fn parse_delimetered(
         false if p.cursor != 0 => {
             if let Some(n) = p.nodes.last_mut() {
                 if n.kind() != SyntaxKind::WhiteSpace {
-                    n.unexpected_with_hint(
-                        "An opening modifier may only be preceded by `whitespace` or `punctuation`",
-                    );
+                    n.unexpected_with_hint(format!(
+                        "An opening modifier may only be preceded by `whitespace` or `punctuation`\nref: [neorg spec]({})", DocLink::new(1051)
+                    ));
                 }
             }
         }
@@ -185,9 +214,6 @@ fn parse_delimetered(
 
     deli_stack.remove(&kind);
 }
-
-const SPAN_HINT: &str = r#"can only span at maximum a single `paragraph`,
-i.e. they get terminated as soon as they encounter a `paragraph break`."#;
 
 assert_tree!(
     // [case:1/9] perfect italics (x)
