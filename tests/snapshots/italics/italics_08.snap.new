@@ -1,6 +1,6 @@
 ---
 source: src/grammer/am.rs
-assertion_line: 258
+assertion_line: 295
 expression: output
 ---
 Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
@@ -26,15 +26,14 @@ Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
     WhiteSpace: " " [ offsets: 38, position: ( line: 0, col: 38 ) ] ]
     Word: "verbatim" [ offsets: 39, position: ( line: 0, col: 39 ) ] ]
     WhiteSpace: " " [ offsets: 47, position: ( line: 0, col: 47 ) ] ]
-  Verbatim [ offsets: 48, position: ( line: 0, col: 48 ) ] ]
     Pipe: "|" [ offsets: 48, position: ( line: 0, col: 48 ) ] ]
-    WhiteSpace: " " [ offsets: 49, position: ( line: 0, col: 49 ) ] ]
-    Word: "chunk" [ offsets: 50, position: ( line: 0, col: 50 ) ] ]
-    WhiteSpace: " " [ offsets: 55, position: ( line: 0, col: 55 ) ] ]
-    Word: "in" [ offsets: 56, position: ( line: 0, col: 56 ) ] ]
-    WhiteSpace: " " [ offsets: 58, position: ( line: 0, col: 58 ) ] ]
-    Word: "it" [ offsets: 59, position: ( line: 0, col: 59 ) ] ]
-    WhiteSpace: " " [ offsets: 61, position: ( line: 0, col: 61 ) ] ]
-    Colon: ":" [ offsets: 62, position: ( line: 0, col: 62 ) ] ]
-    RParen: ")" [ offsets: 63, position: ( line: 0, col: 63 ) ] ]
+  WhiteSpace: " " [ offsets: 49, position: ( line: 0, col: 49 ) ] ]
+  Word: "chunk" [ offsets: 50, position: ( line: 0, col: 50 ) ] ]
+  WhiteSpace: " " [ offsets: 55, position: ( line: 0, col: 55 ) ] ]
+  Word: "in" [ offsets: 56, position: ( line: 0, col: 56 ) ] ]
+  WhiteSpace: " " [ offsets: 58, position: ( line: 0, col: 58 ) ] ]
+  Word: "it" [ offsets: 59, position: ( line: 0, col: 59 ) ] ]
+  WhiteSpace: " " [ offsets: 61, position: ( line: 0, col: 61 ) ] ]
+  Colon: ":" [ offsets: 62, position: ( line: 0, col: 62 ) ] ]
+  RParen: ")" [ offsets: 63, position: ( line: 0, col: 63 ) ] ]
   Slash: "/" [ offsets: 64, position: ( line: 0, col: 64 ) ] ]

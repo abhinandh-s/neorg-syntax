@@ -146,7 +146,7 @@ impl SyntaxKind {
             SyntaxKind::Ampersand => SyntaxKind::Variable,
             SyntaxKind::Hyphen => SyntaxKind::StrikeThrough,
             SyntaxKind::Pipe => SyntaxKind::Verbatim,
-            _ => panic!("can't cast {} to attached modifers", self),
+            _ => panic!("can't cast {self} to attached modifers"),
         }
     }
 }

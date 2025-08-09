@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::{Location, Span, SyntaxKind, Token, TokenData, token};
+use crate::{Location, Span, SyntaxKind, Token, token};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxNode(Repr);

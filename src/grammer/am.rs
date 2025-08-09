@@ -72,11 +72,11 @@ pub(super) fn parse_attached_modifiers(p: &mut Parser) {
         false => {
             match is_valid_op_delimeter(p) {
                 true => {
-                    let deli_stack: &mut HashMap<SyntaxKind, usize> = &mut HashMap::new();
+                    let mut deli_stack: HashMap<SyntaxKind, usize> = HashMap::new();
 
                     let kind = p.current();
                     if DELIMITER_PAIR.contains(&kind) {
-                        parse_delimetered(p, kind, deli_stack);
+                        parse_delimetered(p, kind, &mut deli_stack);
                     }
                 }
                 false => p.unexpected(), // with hint later
@@ -117,7 +117,10 @@ fn parse_delimetered(
         ">> entered parse_delimetered for parsing {} at {}",
         kind, p.cursor
     );
-    let trimmed = !matches!(kind, T![Pipe]);
+
+    println!("{deli_stack:#?}");
+
+    let trimmed = !matches!(kind, T![Pipe] | T![InlineMath] | T![InlineCode]);
     let _nestable = !matches!(kind, T![Caret] | T![Comma]);
     let result = kind.as_attached_modifers_unchecked();
 
@@ -184,7 +187,7 @@ fn parse_delimetered(
                 k if ATTACHED_MODIFIERS.contains(k) => {
                     if kind == k {
                         break;
-                    } else if deli_stack.get(&SyntaxKind::Pipe).is_none() {
+                    } else if deli_stack.get(&k).is_some() {
                         parse_delimetered(p, k, deli_stack);
                     } else {
                         break;
@@ -206,7 +209,6 @@ fn parse_delimetered(
 
     p.expect_closing_delimiter(m, kind); // eat the closing modifier.
     p.wrap(m, result);
-
     deli_stack.remove(&kind);
 }
 
@@ -273,12 +275,21 @@ assert_tree!(
 );
 
 assert_tree!(
+    // [case:6/9] not so perfect italics
+    // error: `LineEnding` inside text chunk
+    italics,
+    italics_13,
+    parse_attached_modifiers,
+    "/an italics | !\"#$%&'()*+,-./:;<=>?@[\\]^_`{}~verbatim | text chunk/ blah blah blah"
+);
+
+assert_tree!(
     // [case:7/9] not so perfect italics
     // feat: other inline elements inside this ATACHED_MODIFIERS
     italics,
     italics_07,
     parse_attached_modifiers,
-    "/an italics text chunk and it have a | verbatim | chunk in it :)/ blah blah blah"
+    "/an italics text chunk and it have a !`/$&%'*,-^_|verbatim |_^-,*'%&$/`! chunk in it :)/ blah blah blah"
 );
 
 assert_tree!(
@@ -316,3 +327,23 @@ assert_tree!(
     parse_attached_modifiers,
     "//this is *bold* //"
 );
+
+#[cfg(test)]
+mod test {
+    quickcheck::quickcheck! {
+        #[test]
+        fn no_panic_on_random_input(input: String) -> bool {
+            let mut parser = crate::Parser::new(&input);
+            super::parse_attached_modifiers(&mut parser);
+            true // test passes if no panic
+        }
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn no_panic_prop(input in ".*") {
+            let mut parser = crate::Parser::new(&input);
+            super::parse_attached_modifiers(&mut parser);
+        }
+    }
+}
