@@ -330,15 +330,6 @@ assert_tree!(
 
 #[cfg(test)]
 mod test {
-    quickcheck::quickcheck! {
-        #[test]
-        fn no_panic_on_random_input(input: String) -> bool {
-            let mut parser = crate::Parser::new(&input);
-            super::parse_attached_modifiers(&mut parser);
-            true // test passes if no panic
-        }
-    }
-
     proptest::proptest! {
         #[test]
         fn no_panic_prop(input in ".*") {

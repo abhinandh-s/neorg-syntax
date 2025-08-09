@@ -3,10 +3,4 @@ source: src/grammer/am.rs
 assertion_line: 322
 expression: output
 ---
-Italics [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
-  Error: "/" (unclosed delimiter) [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
-  Error: "/" (unexpected /) [ offsets: 1, position: ( line: 0, col: 1 ) ] ]
-  Word: "this" [ offsets: 2, position: ( line: 0, col: 2 ) ] ]
-  WhiteSpace: " " [ offsets: 6, position: ( line: 0, col: 6 ) ] ]
-  Word: "is" [ offsets: 7, position: ( line: 0, col: 7 ) ] ]
-  Error: " " (unexpected WhiteSpace) [ offsets: 9, position: ( line: 0, col: 9 ) ] ]
+Error: "/" (unexpected /) [ offsets: 0, position: ( line: 0, col: 0 ) ] ]

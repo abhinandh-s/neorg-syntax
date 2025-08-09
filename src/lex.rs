@@ -197,6 +197,10 @@ impl TokenData {
     pub fn set_kind(&mut self, kind: SyntaxKind) {
         self.kind = kind;
     }
+
+    pub(crate) fn set_text(&mut self, text: String) {
+        self.text = text
+    }
 }
 
 impl Display for TokenData {

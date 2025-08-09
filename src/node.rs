@@ -281,6 +281,14 @@ impl SyntaxNode {
         }
     }
 
+    /// The node's children, mutably.
+    pub(super) fn children_mut(&mut self) -> &mut [SyntaxNode] {
+        match &mut self.0 {
+            Repr::Leaf(_) | Repr::Error(_) => &mut [],
+            Repr::Inner(inner) => &mut Arc::make_mut(inner).children,
+        }
+    }
+
     /// Whether the node or its children contain an error.
     pub fn erroneous(&self) -> bool {
         match &self.0 {
@@ -309,6 +317,15 @@ impl SyntaxNode {
     pub fn hint(&mut self, hint: impl Into<String>) {
         if let Repr::Error(node) = &mut self.0 {
             Arc::make_mut(node).hint(hint);
+        }
+    }
+
+    /// Convert the leaf node to the given kind, if it isn't already one.
+    pub(super) fn convert_text(&mut self, text: impl Into<String>) {
+        match &mut self.0 {
+            Repr::Leaf(leaf_node) => leaf_node.set_text(text),
+            Repr::Inner(_) => panic!("cannot convert inner node"),
+            Repr::Error(_) => panic!("cannot convert error node"),
         }
     }
 
@@ -413,6 +430,10 @@ impl LeafNode {
 
     fn col(&self) -> u32 {
         self.loc.character()
+    }
+
+    fn set_text(&mut self, text: impl Into<String>) {
+        Arc::make_mut(&mut self.token).set_text(text.into());
     }
 }
 

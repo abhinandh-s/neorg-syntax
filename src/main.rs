@@ -7,7 +7,7 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = "/an italics text chunk and it have a dfs!`/$&%'*,-^_|verbatim |_^-,*'%&$/`! chunk in it :)/ blah blah blah";
+    let source = r##"--- this is a unord list"##;
     let mut p = Parser::new(source);
 
     let cst = document(&mut p);
@@ -17,6 +17,9 @@ fn main() {
     for i in err {
         println!("{i:?}");
     }
+
+    let n = fmt_list(cst.clone());
+    println!("{}", n.display());
 
     #[cfg(feature = "tower-lsp")]
     {
@@ -28,4 +31,3 @@ fn main() {
         });
     }
 }
-

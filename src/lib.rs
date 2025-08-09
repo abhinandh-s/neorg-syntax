@@ -1,5 +1,6 @@
 pub(crate) mod errors;
 
+mod fmt;
 mod grammer;
 #[cfg(feature = "tower-lsp")]
 pub mod highlight;
@@ -10,6 +11,7 @@ mod parser;
 mod set;
 mod span;
 
+pub use fmt::*;
 pub use grammer::*;
 pub use kind::*;
 pub use lex::*;
@@ -62,12 +64,11 @@ where
         if start.elapsed() >= std::time::Duration::from_secs(1) {
             panic!("Operation took more than 1 sec, possible infinite loop.");
         }
-        let last_cursor = p.cursor; 
+        let last_cursor = p.cursor;
         body();
         p.assert_movement(last_cursor);
     }
 }
-
 
 #[cfg(debug_assertions)]
 #[track_caller]

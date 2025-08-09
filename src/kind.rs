@@ -73,6 +73,7 @@ pub enum SyntaxKind {
     Verbatim,    // raw text
     Maths,       // $ contents inside this $
     UnderLine,
+    UnOrderedList,
     InlineCode,
     NullModifier,
     InlineMath,

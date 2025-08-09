@@ -67,58 +67,58 @@ impl Parser {
         Marker(self.nodes.len())
     }
 
-    #[track_caller]
     pub(crate) fn assert(&mut self, kind: SyntaxKind) {
         assert_eq!(self.current(), kind);
     }
 
-    #[track_caller]
     pub(crate) fn bump(&mut self, kind: SyntaxKind) {
         assert_eq!(self.current(), kind);
         self.eat();
     }
 
-    #[track_caller]
     pub(crate) fn get_current(&self) -> Option<SyntaxKind> {
         self.tokens.get(self.cursor).map(|t| t.kind())
     }
 
-    #[track_caller]
     pub(crate) fn get_unchecked(&self, n: usize) -> SyntaxKind {
         self.tokens[n].kind()
     }
 
-    #[track_caller]
     pub(crate) fn get(&self) -> Option<SyntaxKind> {
         self.tokens.get(self.cursor).map(|f| f.kind())
     }
 
     #[track_caller]
-    pub(crate) fn current(&self) -> SyntaxKind {
-        if self.tokens.len() < self.cursor {
-            panic!(
-                "Index out of bounds. cursor = {}, token len = {}",
-                self.cursor,
-                self.tokens.len()
-            );
+    fn kind_at(&self, index: usize) -> SyntaxKind {
+        if index >= self.tokens.len() {
+            T![Eof]
+        } else {
+            self.tokens[index].kind()
         }
-        self.tokens[self.cursor].kind()
+    }
+
+    pub(crate) fn current(&self) -> SyntaxKind {
+        self.kind_at(self.cursor)
     }
 
     pub(crate) fn next(&self) -> Option<SyntaxKind> {
-        self.tokens
-            .get(self.cursor.saturating_add(1))
-            .map(|f| f.kind())
+        if self.cursor + 1 >= self.tokens.len() {
+            None
+        } else {
+            Some(self.tokens[self.cursor + 1].kind())
+        }
     }
 
     pub(crate) fn nth(&self, n: usize) -> SyntaxKind {
-        self.tokens.get(n).map_or(T![Eof], |f| f.kind())
+        self.kind_at(n)
     }
 
     pub(crate) fn prev(&self) -> Option<SyntaxKind> {
-        self.tokens
-            .get(self.cursor.saturating_sub(1))
-            .map(|f| f.kind())
+        if self.cursor == 0 {
+            None
+        } else {
+            Some(self.tokens[self.cursor - 1].kind())
+        }
     }
 
     #[track_caller]
@@ -148,7 +148,22 @@ impl Parser {
         self.cursor += 1;
     }
 
-    pub(crate) fn eat_many(&mut self, eatable: SyntaxSet) {
+    pub(crate) fn eat_many_counted(&mut self, eatable: SyntaxKind) -> usize {
+        let mut n = 0;
+        while self.at(eatable) {
+            self.eat();
+            n += 1;
+        }
+        n
+    }
+
+    pub(crate) fn eat_many(&mut self, eatable: SyntaxKind) {
+        while self.at(eatable) {
+            self.eat();
+        }
+    }
+
+    pub(crate) fn eat_many_in_set(&mut self, eatable: SyntaxSet) {
         while self.at_set(eatable) {
             self.eat();
         }
@@ -192,7 +207,6 @@ impl Parser {
 
     /// Consume the given closing delimiter or produce an error for the matching
     /// opening delimiter at `open`.
-    #[track_caller]
     pub(crate) fn expect_closing_delimiter(&mut self, open: Marker, kind: SyntaxKind) {
         if !self.eat_if(kind) {
             self.nodes[open.0].convert_to_error("unclosed delimiter");
@@ -208,7 +222,6 @@ impl Parser {
     }
 
     /// Eat the current node and return a reference for in-place mutation.
-    #[track_caller]
     pub(crate) fn eat_and_get(&mut self) -> &mut SyntaxNode {
         let offset = self.nodes.len();
         self.eat();
@@ -231,7 +244,6 @@ impl Parser {
         self.nodes.insert(m.0, error);
     }
 
-    #[track_caller]
     pub(crate) fn at(&self, kind: SyntaxKind) -> bool {
         match self.is_at_eof() {
             true => false,
@@ -239,20 +251,11 @@ impl Parser {
         }
     }
 
-    #[track_caller]
     pub(crate) fn at_set(&self, set: SyntaxSet) -> bool {
         set.contains(self.current())
     }
 
-    #[track_caller]
     pub(crate) fn is_at_eof(&self) -> bool {
-        if self.cursor > self.tokens.len() {
-            panic!(
-                "Index out of bounds. cursor = {}, token len = {}",
-                self.cursor,
-                self.tokens.len()
-            );
-        }
         self.current() == T![Eof]
     }
 

@@ -6,6 +6,7 @@ mod am;
 use am::*;
 
 mod dm;
+use dm::*;
 
 #[derive(Debug)]
 pub(crate) struct DocLink {
@@ -48,11 +49,13 @@ pub enum NeorgLint {
 pub fn document(p: &mut Parser) -> SyntaxNode {
     let m = p.start();
 
-    looper!(!p.is_at_eof(), {
+    // stops on Eof
+    p.iter_while(None, |p| {
         p.skip_whitespace();
 
         match p.current() {
             T![Asterisk] => heading(p),
+            T![Hyphen] => unorderedlist(p),
             _ => paragraph(p),
         }
     });
@@ -79,7 +82,7 @@ fn paragraph_segment(p: &mut Parser) {
     looper!(!p.is_at_eof(), {
         match p.current() {
             SyntaxKind::Eof | SyntaxKind::LineEnding | SyntaxKind::ParaBreak => break,
-            SyntaxKind::Slash => parse_attached_modifiers(p),
+            // SyntaxKind::Slash => parse_attached_modifiers(p),
             _ => p.eat(),
         }
     });
@@ -171,7 +174,7 @@ fn paragraph(p: &mut Parser) {
 
 fn quote(p: &mut Parser) {
     let m = p.start();
-    p.eat_many(syntax_set!(GreaterThan));
+    p.eat_many_in_set(syntax_set!(GreaterThan));
     p.expect(T![WhiteSpace]);
     paragraph_segment(p);
     p.wrap(m, T![Quote]);
@@ -179,7 +182,7 @@ fn quote(p: &mut Parser) {
 
 fn heading(p: &mut Parser) {
     let m = p.start();
-    p.eat_many(syntax_set!(Asterisk));
+    p.eat_many_in_set(syntax_set!(Asterisk));
     p.expect(T![WhiteSpace]);
     looper!(!p.is_at_eof(), {
         match p.current() {
