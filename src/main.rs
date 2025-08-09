@@ -18,9 +18,6 @@ fn main() {
         println!("{i:?}");
     }
 
-    let n = fmt_list(cst.clone());
-    println!("{}", n.display());
-
     #[cfg(feature = "tower-lsp")]
     {
         cst.provide_semantic_tokens().iter().for_each(|s| {

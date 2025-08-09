@@ -74,6 +74,7 @@ pub enum SyntaxKind {
     Maths,       // $ contents inside this $
     UnderLine,
     UnOrderedList,
+    GenericList,
     InlineCode,
     NullModifier,
     InlineMath,

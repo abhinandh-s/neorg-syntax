@@ -1,6 +1,5 @@
 pub(crate) mod errors;
 
-mod fmt;
 mod grammer;
 #[cfg(feature = "tower-lsp")]
 pub mod highlight;
@@ -11,7 +10,6 @@ mod parser;
 mod set;
 mod span;
 
-pub use fmt::*;
 pub use grammer::*;
 pub use kind::*;
 pub use lex::*;

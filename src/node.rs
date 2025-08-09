@@ -3,6 +3,31 @@ use std::sync::Arc;
 
 use crate::{Location, Span, SyntaxKind, Token, token};
 
+// match node.node_type_flags() {
+//            NODE_TYPE_LEAF => (),
+//            NODE_TYPE_INNER => (),
+//            NODE_TYPE_ERROR => (),
+//             _ => (),
+//         }
+/// Public bitflags representing the general category of a syntax node.
+/// Values can be combined using bitwise OR.
+pub type NodeTypeFlags = u8;
+
+pub const NODE_TYPE_LEAF: NodeTypeFlags = 0b0000_0001;
+pub const NODE_TYPE_INNER: NodeTypeFlags = 0b0000_0010;
+pub const NODE_TYPE_ERROR: NodeTypeFlags = 0b0000_0100;
+
+impl SyntaxNode {
+    /// Returns a bitflag indicating the type of this node.
+    pub fn node_type_flags(&self) -> NodeTypeFlags {
+        match &self.0 {
+            Repr::Leaf(_) => NODE_TYPE_LEAF,
+            Repr::Inner(_) => NODE_TYPE_INNER,
+            Repr::Error(_) => NODE_TYPE_ERROR,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxNode(Repr);
 
