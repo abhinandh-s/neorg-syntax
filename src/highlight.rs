@@ -158,7 +158,7 @@ macro_rules! semtype {
 }
 
 pub const LEGEND_TYPE: &[lsp::SemanticTokenType] = &[
-    lsp::SemanticTokenType::FUNCTION,             // 0
+    lsp::SemanticTokenType::new("neorg.text"),   // 0
     lsp::SemanticTokenType::VARIABLE,             // 1
     lsp::SemanticTokenType::STRING,               // 2
     lsp::SemanticTokenType::COMMENT,              // 3
@@ -170,6 +170,7 @@ pub const LEGEND_TYPE: &[lsp::SemanticTokenType] = &[
     lsp::SemanticTokenType::new("neorg.heading"), // 9
     lsp::SemanticTokenType::new("neorg.italics"), // 10
     lsp::SemanticTokenType::new("neorg.bold"),    // 11
+    lsp::SemanticTokenType::FUNCTION,             // 12
 ];
 
 #[cfg(test)]

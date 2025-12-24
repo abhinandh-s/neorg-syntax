@@ -689,6 +689,86 @@ impl SyntaxNode {
     }
 }
 
+fn fmt_lists(inner: &Arc<InnerNode>, output: &mut String) {
+    let mut is_first_wh = false;
+    for child in &inner.children {
+        if child.kind() == SyntaxKind::WhiteSpace && !is_first_wh {
+            output.push(' ');
+            is_first_wh = true;
+        } else {
+            fmt(child, output);
+        }
+    }
+}
+
+fn fmt_headings(inner: &Arc<InnerNode>, output: &mut String) {
+    let mut is_first_wh = false;
+    let mut is_first_char = true;
+    for child in &inner.children {
+        if child.kind() == SyntaxKind::WhiteSpace && !is_first_wh {
+            output.push(' ');
+            is_first_wh = true;
+        } else if child.kind() == SyntaxKind::Word && is_first_char {
+            if let Some(fist_char) = child.text().chars().next()
+                && !fist_char.is_uppercase()
+            {
+                let a = fist_char.to_uppercase().to_string();
+                let mut string = child.text().to_owned();
+                string.replace_range(..1, &a);
+                output.push_str(&string);
+            } else {
+                fmt(child, output);
+            }
+            is_first_char = false;
+        } else {
+            fmt(child, output);
+        }
+    }
+}
+
+fn fmt(node: &SyntaxNode, output: &mut String) {
+    match &node.0 {
+        Repr::Leaf(leaf) => {
+            // removing trialing white spaces from every sentences
+            if leaf.kind() == SyntaxKind::LineEnding && output.ends_with(" ") {
+                output.pop();
+            } else if leaf.kind() == SyntaxKind::ParaBreak {
+                output.push_str("\n\n");
+            } else if leaf.kind() != SyntaxKind::Eof {
+                output.push_str(leaf.text());
+            }
+        }
+        Repr::Inner(inner) => match inner.kind() {
+            SyntaxKind::UnOrderedList | SyntaxKind::GenericList => fmt_lists(inner, output),
+            SyntaxKind::Heading => fmt_headings(inner, output),
+            _ => {
+                for child in &inner.children {
+                    fmt(child, output);
+                }
+            }
+        },
+        Repr::Error(err) => {
+            // this is unreachable!
+            panic!(
+                "Error: {:?} ({}) {}\n",
+                err.text, err.error.message, err.error.loc
+            );
+        }
+    }
+}
+
+impl SyntaxNode {
+    pub fn format(&self) -> Option<String> {
+        if self.erroneous() {
+            return None;
+        }
+
+        let mut out = String::new();
+        fmt(self, &mut out);
+        Some(out)
+    }
+}
+
 // req methods
 //
 // - len
@@ -727,6 +807,70 @@ pub trait LocationTrait {
     }
 }
 
+#[allow(unused)]
+#[cfg(feature = "tower-lsp")]
+impl SyntaxNode {
+    pub fn collect_semantic_tokens(&self) -> Vec<tower_lsp::lsp_types::SemanticToken> {
+        let mut result: Vec<tower_lsp::lsp_types::SemanticToken> = Vec::new();
+
+        let (mut line, mut col) = (0u32, 0u32);
+        let mut token_type = 0u32;
+
+        Self::helper(self, &mut line, &mut col, &mut token_type, &mut result);
+
+        result
+    }
+    fn helper(
+        node: &SyntaxNode,
+        prev_line: &mut u32,
+        prev_col: &mut u32,
+        token_type: &mut u32,
+        result: &mut Vec<tower_lsp::lsp_types::SemanticToken>,
+    ) {
+        match &node.0 {
+            Repr::Leaf(leaf) => {
+                let line = leaf.loc.line();
+                let col = leaf.col();
+                println!("l:{line}, c:{col}, len:{}", leaf.len_utf16());
+
+                let delta_line = line.saturating_sub(*prev_line);
+                let delta_start = col;
+
+                result.push(tower_lsp::lsp_types::SemanticToken {
+                    delta_line,
+                    delta_start,
+                    length: leaf.len_utf16() as u32,
+                    token_type: *token_type,
+                    token_modifiers_bitset: 0,
+                });
+
+                // Update positions
+                if leaf.kind() == SyntaxKind::LineEnding {
+                    *prev_line += 1;
+                    *prev_col = 0;
+                } else if leaf.kind() == SyntaxKind::ParaBreak {
+                    *prev_line += 2;
+                    *prev_col = 0;
+                } else {
+                    *prev_line = line;
+                    *prev_col = col + leaf.len_utf16() as u32;
+                }
+            }
+            Repr::Inner(inner_node) => {
+                let old_type = *token_type;
+                if inner_node.kind() == SyntaxKind::Heading {
+                    *token_type = 12;
+                }
+                for i in &inner_node.children {
+                    Self::helper(i, prev_line, prev_col, token_type, result);
+                }
+                *token_type = old_type;
+            }
+            Repr::Error(_) => {}
+        }
+    }
+}
+
 #[cfg(feature = "tower-lsp")]
 impl SyntaxNode {
     #[allow(unused)]
@@ -755,6 +899,14 @@ impl SyntaxNode {
     ) {
         match node.0 {
             Repr::Leaf(leaf) => {
+                let ctx = tower_lsp::lsp_types::SemanticToken {
+                    delta_line: *delta_line,
+                    delta_start: *delta_start,
+                    length: leaf.len_utf16() as u32,
+                    token_type: *token_type,
+                    token_modifiers_bitset: 0,
+                };
+                result.push(ctx);
                 match leaf.kind() {
                     SyntaxKind::LineEnding => {
                         *delta_line += 1;
@@ -764,18 +916,11 @@ impl SyntaxNode {
                         *delta_line += 2;
                         *delta_start = 0;
                     }
-                    _ => (),
+                    _ => {
+                        *delta_line = 0u32;
+                        *delta_start = 0u32;
+                    }
                 };
-                let ctx = tower_lsp::lsp_types::SemanticToken {
-                    delta_line: *delta_line,
-                    delta_start: *delta_start,
-                    length: leaf.len_utf16() as u32,
-                    token_type: *token_type,
-                    token_modifiers_bitset: 0,
-                };
-                result.push(ctx);
-                *delta_line = 0u32;
-                *delta_start = 0u32;
             }
             Repr::Inner(inner_node) => {
                 if inner_node.kind() == SyntaxKind::Heading {

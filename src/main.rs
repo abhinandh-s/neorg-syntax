@@ -7,24 +7,27 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = r##"--- this is a unord list"##;
-    let mut p = Parser::new(source);
+    let source = r##"sdasdas
 
-    let cst = document(&mut p);
+
+
+
+*      this
+-- this"##;
+
+    let cst = cst!(source);
     println!("{}", cst.display());
+
+    cst.collect_semantic_tokens().iter().for_each(|f| println!("{:?}", f));
 
     let err = crate::get_errors(cst.clone());
     for i in err {
-        println!("{i:?}");
+        if i.kind() == crate::SyntaxKind::UnOrderedList {
+            println!("{i:?}");
+        }
     }
 
-    #[cfg(feature = "tower-lsp")]
-    {
-        cst.provide_semantic_tokens().iter().for_each(|s| {
-            println!(
-                "{},{},{},{},{}",
-                s.delta_line, s.delta_start, s.length, s.token_type, s.token_modifiers_bitset
-            );
-        });
+    if let Some(formatted) = cst.format() {
+        println!("{}", formatted);
     }
 }

@@ -79,13 +79,18 @@ pub fn document(p: &mut Parser) -> SyntaxNode {
 // ),
 fn paragraph_segment(p: &mut Parser) {
     let m = p.start();
-    looper!(!p.is_at_eof(), {
+    while !p.is_at_eof() {
         match p.current() {
-            SyntaxKind::Eof | SyntaxKind::LineEnding | SyntaxKind::ParaBreak => break,
+            SyntaxKind::Eof | SyntaxKind::LineEnding => {
+                p.bump_line();
+                p.eat();
+                break;
+            },
+            SyntaxKind::ParaBreak => break,
             // SyntaxKind::Slash => parse_attached_modifiers(p),
             _ => p.eat(),
         }
-    });
+    }
     // while !p.at_set(syntax_set!(Eof, LineEnding, ParaBreak)) {
     //     let last_cursor = p.cursor;
     //     match p.current() {
@@ -158,9 +163,7 @@ fn paragraph(p: &mut Parser) {
     let last_cursor = p.cursor;
     looper!(!p.is_at_eof(), {
         if p.current() == SyntaxKind::ParaBreak {
-            p.bump(T![ParaBreak]);
-            p.bump_line();
-            p.bump_line();
+            eat_breaks(p);
             break;
         } else {
             paragraph_segment(p);

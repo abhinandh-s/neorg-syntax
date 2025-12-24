@@ -9,6 +9,7 @@ mod node;
 mod parser;
 mod set;
 mod span;
+mod fmt;
 
 pub use grammer::*;
 pub use kind::*;
@@ -26,6 +27,13 @@ macro_rules! hl {
     () => {
         None
     };
+}
+
+#[macro_export]
+macro_rules! cst {
+    ($source:expr) => ({
+        $crate::document(&mut $crate::Parser::new($source))
+    })
 }
 
 /// If an Operation in this while loop took more than 1 second it will panic

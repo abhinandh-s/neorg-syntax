@@ -718,13 +718,15 @@ fn lex_line_or_para_ending(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
     let mut text = String::new();
     let mut len = 0;
 
-    match line_ending(chars, &mut text, &mut len) {
-        true => {
-            if line_ending(chars, &mut text, &mut len) {
-                kind = SyntaxKind::ParaBreak;
-            }
+    // ahh fix this later
+    if line_ending(chars, &mut text, &mut len) {
+        if line_ending(chars, &mut text, &mut len) {
+            kind = SyntaxKind::ParaBreak;
+
+            while line_ending(chars, &mut text, &mut len) {}
         }
-        false => return None,
+    } else {
+        return None
     }
     Some(token!(kind, text, len))
 }
