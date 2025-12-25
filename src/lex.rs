@@ -560,11 +560,11 @@ impl<'a> Lexer<'a> {
         let mut chars = self.source.chars().peekable();
 
         while let Some(&char) = chars.peek() {
-            if let Some(&lex_fn) = punctuation_tokenizers().get(&char) {
-                if let Some(tok) = lex_fn(&mut chars) {
-                    self.tokens.push(tok);
-                    continue;
-                }
+            if let Some(&lex_fn) = punctuation_tokenizers().get(&char)
+                && let Some(tok) = lex_fn(&mut chars)
+            {
+                self.tokens.push(tok);
+                continue;
             }
 
             if let Some(tok) = lex_line_or_para_ending(&mut chars) {
@@ -647,11 +647,11 @@ fn lex_escaped_char(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
     }
     let mut len = char.len_utf16();
     chars.next(); // char is '\' so eat it
-    if let Some(char) = chars.peek() {
-        if char.is_punctuation() {
-            len += char.len_utf16();
-            return Some(token!(SyntaxKind::EscapedChar, format!("\\{}", &char), len));
-        }
+    if let Some(char) = chars.peek()
+        && char.is_punctuation()
+    {
+        len += char.len_utf16();
+        return Some(token!(SyntaxKind::EscapedChar, format!("\\{}", &char), len));
     }
     // if there is no punctuation char after `\` then lex it as `ForwardSlash`
     Some(token!(SyntaxKind::ForwardSlash, '\\', len))
@@ -723,10 +723,10 @@ fn lex_line_or_para_ending(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
         if line_ending(chars, &mut text, &mut len) {
             kind = SyntaxKind::ParaBreak;
 
-            while line_ending(chars, &mut text, &mut len) {}
+          //  while line_ending(chars, &mut text, &mut len) {}
         }
     } else {
-        return None
+        return None;
     }
     Some(token!(kind, text, len))
 }

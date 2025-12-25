@@ -85,7 +85,7 @@ fn paragraph_segment(p: &mut Parser) {
                 p.bump_line();
                 p.eat();
                 break;
-            },
+            }
             SyntaxKind::ParaBreak => break,
             // SyntaxKind::Slash => parse_attached_modifiers(p),
             _ => p.eat(),
@@ -162,11 +162,12 @@ fn paragraph(p: &mut Parser) {
     let m = p.start();
     let last_cursor = p.cursor;
     looper!(!p.is_at_eof(), {
-        if p.current() == SyntaxKind::ParaBreak {
-            eat_breaks(p);
-            break;
-        } else {
-            paragraph_segment(p);
+        match p.current() {
+            SyntaxKind::ParaBreak | SyntaxKind::LineEnding => {
+                eat_breaks(p);
+                break;
+            }
+            _ => paragraph_segment(p),
         }
     });
 

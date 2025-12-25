@@ -20,14 +20,9 @@ fn main() {
 
     cst.collect_semantic_tokens().iter().for_each(|f| println!("{:?}", f));
 
-    let err = crate::get_errors(cst.clone());
-    for i in err {
-        if i.kind() == crate::SyntaxKind::UnOrderedList {
-            println!("{i:?}");
-        }
-    }
-
     if let Some(formatted) = cst.format() {
-        println!("{}", formatted);
+        
+        println!("Input:\n{}", source);
+        println!("Formatted:\n{}", formatted);
     }
 }

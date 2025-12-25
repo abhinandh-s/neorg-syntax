@@ -807,7 +807,6 @@ pub trait LocationTrait {
     }
 }
 
-#[allow(unused)]
 #[cfg(feature = "tower-lsp")]
 impl SyntaxNode {
     pub fn collect_semantic_tokens(&self) -> Vec<tower_lsp::lsp_types::SemanticToken> {
@@ -829,32 +828,31 @@ impl SyntaxNode {
     ) {
         match &node.0 {
             Repr::Leaf(leaf) => {
-                let line = leaf.loc.line();
+                let line = leaf.line();
                 let col = leaf.col();
-                println!("l:{line}, c:{col}, len:{}", leaf.len_utf16());
+                let length = leaf.len_utf16() as u32;
+                if length == 0 {
+                    return;
+                }
 
                 let delta_line = line.saturating_sub(*prev_line);
-                let delta_start = col;
+                let delta_start = if delta_line == 0 {
+                    col.saturating_sub(*prev_col)
+                } else {
+                    col
+                };
 
                 result.push(tower_lsp::lsp_types::SemanticToken {
                     delta_line,
                     delta_start,
-                    length: leaf.len_utf16() as u32,
+                    length,
                     token_type: *token_type,
                     token_modifiers_bitset: 0,
                 });
 
                 // Update positions
-                if leaf.kind() == SyntaxKind::LineEnding {
-                    *prev_line += 1;
-                    *prev_col = 0;
-                } else if leaf.kind() == SyntaxKind::ParaBreak {
-                    *prev_line += 2;
-                    *prev_col = 0;
-                } else {
-                    *prev_line = line;
-                    *prev_col = col + leaf.len_utf16() as u32;
-                }
+                *prev_line = line;
+                *prev_col = if delta_line == 0 { col } else { 0 };
             }
             Repr::Inner(inner_node) => {
                 let old_type = *token_type;
@@ -867,71 +865,6 @@ impl SyntaxNode {
                 *token_type = old_type;
             }
             Repr::Error(_) => {}
-        }
-    }
-}
-
-#[cfg(feature = "tower-lsp")]
-impl SyntaxNode {
-    #[allow(unused)]
-    pub fn provide_semantic_tokens(&self) -> Vec<tower_lsp::lsp_types::SemanticToken> {
-        let mut result: Vec<tower_lsp::lsp_types::SemanticToken> = Vec::new();
-        let mut delta_line = 0u32;
-        let mut delta_start = 0u32;
-        let mut token_type = 0u32;
-        println!("started");
-        Self::semantic_tokens(
-            self.clone(),
-            &mut delta_line,
-            &mut delta_start,
-            &mut token_type,
-            &mut result,
-        );
-        result
-    }
-    #[allow(unused, clippy::ptr_arg)]
-    fn semantic_tokens(
-        node: SyntaxNode,
-        delta_line: &mut u32,
-        delta_start: &mut u32,
-        token_type: &mut u32,
-        result: &mut Vec<tower_lsp::lsp_types::SemanticToken>,
-    ) {
-        match node.0 {
-            Repr::Leaf(leaf) => {
-                let ctx = tower_lsp::lsp_types::SemanticToken {
-                    delta_line: *delta_line,
-                    delta_start: *delta_start,
-                    length: leaf.len_utf16() as u32,
-                    token_type: *token_type,
-                    token_modifiers_bitset: 0,
-                };
-                result.push(ctx);
-                match leaf.kind() {
-                    SyntaxKind::LineEnding => {
-                        *delta_line += 1;
-                        *delta_start = 0;
-                    }
-                    SyntaxKind::ParaBreak => {
-                        *delta_line += 2;
-                        *delta_start = 0;
-                    }
-                    _ => {
-                        *delta_line = 0u32;
-                        *delta_start = 0u32;
-                    }
-                };
-            }
-            Repr::Inner(inner_node) => {
-                if inner_node.kind() == SyntaxKind::Heading {
-                    *token_type = 9;
-                }
-                for i in &inner_node.children {
-                    Self::semantic_tokens(i.clone(), delta_line, delta_start, token_type, result);
-                }
-                *token_type = 0;
-            }
-            Repr::Error(error_node) => {}
         }
     }
 }
