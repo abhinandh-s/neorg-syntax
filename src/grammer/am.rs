@@ -142,7 +142,7 @@ fn parse_delimetered(
             if let Some(n) = p.nodes.last_mut() {
                 if n.kind() != SyntaxKind::WhiteSpace {
                     n.unexpected_with_hint(format!(
-                        "An opening modifier may only be preceded by `whitespace` or `punctuation`\nref: [neorg spec]({})", DocLink::new(1051)
+                        "An opening modifier may only be preceded by `whitespace` or `punctuation`"
                     ));
                 }
             }

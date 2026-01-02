@@ -8,27 +8,6 @@ use am::*;
 mod dm;
 use dm::*;
 
-#[derive(Debug)]
-pub(crate) struct DocLink {
-    line: u32,
-}
-
-impl DocLink {
-    pub(crate) const fn new(line: u32) -> Self {
-        Self { line }
-    }
-}
-
-impl std::fmt::Display for DocLink {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "https://github.com/nvim-neorg/norg-specs/blob/main/1.0-specification.norg#L{}",
-            self.line
-        )
-    }
-}
-
 pub enum NeorgLint {
     EmptyAtModifiers,
     EmptyLink,
@@ -55,6 +34,7 @@ pub fn document(p: &mut Parser) -> SyntaxNode {
 
         match p.current() {
             T![Asterisk] => heading(p),
+            T![GreaterThan] => quote(p),
             T![Hyphen] => unorderedlist(p),
             _ => paragraph(p),
         }

@@ -237,6 +237,26 @@ impl Parser {
     pub(crate) fn unexpected_with_hint(&mut self, hint: impl Into<String>) {
         self.eat_and_get().unexpected_with_hint(hint);
     }
+
+    // alpha
+    pub fn doc_ref(&mut self, line_number: &str) {
+        let node = self.eat_and_get();
+        if node.erroneous() {
+            node.hint(format!(
+                "https://github.com/nvim-neorg/norg-specs/blob/main/1.0-specification.norg#L{}",
+                line_number
+            ));
+        }
+    }
+
+    // alpha
+    pub fn hint(&mut self, hint: impl Into<String>) {
+        let node = self.eat_and_get();
+        if node.erroneous() {
+            node.hint(hint);
+        }
+    }
+
     /// Produce an error that the given `thing` was expected at the position
     /// of the marker `m`.
     pub(crate) fn expected_at(&mut self, m: Marker, thing: &str) {

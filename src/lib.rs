@@ -2,7 +2,7 @@ pub(crate) mod errors;
 
 mod grammer;
 #[cfg(feature = "tower-lsp")]
-pub mod highlight;
+mod highlight;
 mod kind;
 mod lex;
 mod node;
@@ -18,6 +18,7 @@ pub use node::*;
 pub use parser::*;
 pub use set::*;
 pub use span::*;
+pub use highlight::*;
 
 #[macro_export]
 macro_rules! hl {

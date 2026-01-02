@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
+use crate::highlight::LEGEND_TYPE;
 use crate::{Location, Span, SyntaxKind, Token, token};
 
 // match node.node_type_flags() {
@@ -346,7 +347,7 @@ impl SyntaxNode {
     }
 
     /// Convert the leaf node to the given kind, if it isn't already one.
-    pub(super) fn convert_text(&mut self, text: impl Into<String>) {
+    pub fn convert_text(&mut self, text: impl Into<String>) {
         match &mut self.0 {
             Repr::Leaf(leaf_node) => leaf_node.set_text(text),
             Repr::Inner(_) => panic!("cannot convert inner node"),
@@ -826,6 +827,8 @@ impl SyntaxNode {
         token_type: &mut u32,
         result: &mut Vec<tower_lsp::lsp_types::SemanticToken>,
     ) {
+        use crate::highlight::LEGEND_TYPE;
+
         match &node.0 {
             Repr::Leaf(leaf) => {
                 let line = leaf.line();
@@ -856,8 +859,10 @@ impl SyntaxNode {
             }
             Repr::Inner(inner_node) => {
                 let old_type = *token_type;
-                if inner_node.kind() == SyntaxKind::Heading {
-                    *token_type = 12;
+                match inner_node.kind() {
+                    SyntaxKind::Heading => *token_type = legend_pos("neorg.heading"),
+                    SyntaxKind::Quote => *token_type = legend_pos("neorg.quote"),
+                    _ => (),
                 }
                 for i in &inner_node.children {
                     Self::helper(i, prev_line, prev_col, token_type, result);
@@ -867,6 +872,13 @@ impl SyntaxNode {
             Repr::Error(_) => {}
         }
     }
+}
+
+fn legend_pos(typ: &str) -> u32 {
+    LEGEND_TYPE
+        .iter()
+        .position(|p| p.as_str() == typ)
+        .unwrap_or_default() as u32
 }
 
 #[cfg(test)]
