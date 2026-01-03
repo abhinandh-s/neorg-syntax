@@ -157,14 +157,22 @@ impl Parser {
         n
     }
 
+    // eat until we get these tokens. no need to put Eof
+    pub(crate) fn eat_until(&mut self, eatables: SyntaxSet) {
+        let set = eatables.add(T![Eof]);
+        while !self.at_set(set) {
+            self.eat();
+        }
+    }
+
     pub(crate) fn eat_many(&mut self, eatable: SyntaxKind) {
         while self.at(eatable) {
             self.eat();
         }
     }
 
-    pub(crate) fn eat_many_in_set(&mut self, eatable: SyntaxSet) {
-        while self.at_set(eatable) {
+    pub(crate) fn eat_many_in_set(&mut self, eatables: SyntaxSet) {
+        while self.at_set(eatables) {
             self.eat();
         }
     }

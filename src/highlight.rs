@@ -8,7 +8,7 @@
 macro_rules! SemanticTokenType {
     ($tag:literal) => {
         tower_lsp::lsp_types::SemanticTokenType::new($tag)
-    }
+    };
 }
 
 macro_rules! SemanticTokenTypes {
@@ -25,6 +25,8 @@ SemanticTokenTypes! {
     "neorg.text",    // 00
     "neorg.heading", // 01
     "neorg.quote",   // 02
-    "neorg.italics", // 04
     "neorg.bold",    // 04
+    "neorg.italic", // 04
+    "neorg.underline", // 04
+                      "neorg.strikethrough" //
 }

@@ -827,8 +827,6 @@ impl SyntaxNode {
         token_type: &mut u32,
         result: &mut Vec<tower_lsp::lsp_types::SemanticToken>,
     ) {
-        use crate::highlight::LEGEND_TYPE;
-
         match &node.0 {
             Repr::Leaf(leaf) => {
                 let line = leaf.line();
@@ -862,6 +860,10 @@ impl SyntaxNode {
                 match inner_node.kind() {
                     SyntaxKind::Heading => *token_type = legend_pos("neorg.heading"),
                     SyntaxKind::Quote => *token_type = legend_pos("neorg.quote"),
+                    SyntaxKind::Bold => *token_type = legend_pos("neorg.bold"),
+                    SyntaxKind::Italics => *token_type = legend_pos("neorg.italic"),
+                    SyntaxKind::UnderLine => *token_type = legend_pos("neorg.underline"),
+                    SyntaxKind::StrikeThrough => *token_type = legend_pos("neorg.strikethrough"),
                     _ => (),
                 }
                 for i in &inner_node.children {

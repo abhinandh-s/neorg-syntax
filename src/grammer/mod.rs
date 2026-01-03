@@ -59,6 +59,7 @@ pub fn document(p: &mut Parser) -> SyntaxNode {
 // ),
 fn paragraph_segment(p: &mut Parser) {
     let m = p.start();
+
     while !p.is_at_eof() {
         match p.current() {
             SyntaxKind::Eof | SyntaxKind::LineEnding => {
@@ -67,7 +68,18 @@ fn paragraph_segment(p: &mut Parser) {
                 break;
             }
             SyntaxKind::ParaBreak => break,
-            // SyntaxKind::Slash => parse_attached_modifiers(p),
+            a if DELIMITER_PAIR.contains(&a) => {
+                //   if let Some(t) = p.next() {
+                //     let state = t == a;
+                //   if state {
+                //     while p.current() == a {
+                //       p.covert_and_eat(T![Word]);
+                // }
+                //           }
+                //     } else {
+                parse_attached_modifiers(p)
+                //   }
+            }
             _ => p.eat(),
         }
     }
@@ -168,11 +180,6 @@ fn heading(p: &mut Parser) {
     let m = p.start();
     p.eat_many_in_set(syntax_set!(Asterisk));
     p.expect(T![WhiteSpace]);
-    looper!(!p.is_at_eof(), {
-        match p.current() {
-            SyntaxKind::Eof | SyntaxKind::LineEnding | SyntaxKind::ParaBreak => break,
-            _ => p.eat(),
-        }
-    });
+    p.eat_until(syntax_set!(LineEnding, ParaBreak));
     p.wrap(m, SyntaxKind::Heading);
 }

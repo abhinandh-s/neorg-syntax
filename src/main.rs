@@ -7,22 +7,28 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = r##"sdasdas
+    let source = r##"** This is a heading
+
+thid id *bold* and this is /italic/ _underline_
+this is -strike-
+
+ds
+
+this *s
 
 
+** This is a heading"##;
 
+    println!("{}", cst!(source).display());
 
-*      this
--- this"##;
+    /*
+    cst.collect_semantic_tokens()
+        .iter()
+        .for_each(|f| println!("{:?}", f));
+        if let Some(formatted) = cst.format() {
+            println!("Input:\n{}", source);
+            println!("Formatted:\n{}", formatted);
+        }
 
-    let cst = cst!(source);
-    println!("{}", cst.display());
-
-    cst.collect_semantic_tokens().iter().for_each(|f| println!("{:?}", f));
-
-    if let Some(formatted) = cst.format() {
-        
-        println!("Input:\n{}", source);
-        println!("Formatted:\n{}", formatted);
-    }
+    */
 }

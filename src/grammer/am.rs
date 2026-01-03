@@ -1,10 +1,52 @@
 //! # Attached Modifiers
+//!  
+//!  This section discusses attached modifiers (which originally gave rise to
+//!  the name of [detached modifiers] as their natural counter-parts).
+//!  Attached modifiers encapsulate some text within a [paragraph]
+//!  and change the way it is displayed in the document.
+//!  
+//!  An attached modifier consists of two parts:
+//!     1.the opening modifier and
+//!     2.the closing modifier.
+//!
+//! ## General rules for attached modifiers:
+//!    
+//!    - An opening modifier may only be preceded by whitespace or punctuation
+//!    - An opening modifier may _NOT_ be succeeded by whitespace
+//!    - A closing modifier may _NOT_ be preceded by whitespace
+//!    - A closing modifier may only be succeeded by whitespace or punctuation
+//!
+//!    Max span = a paragraph TODO: []
+//!    ie, is terminated at ParaBreak in case of non closure
+//!
+//!    Nesting is allowed. (must be in order) eg: =>   */_-like this-_/*
+//!
+//!  Two or more consecutive attached modifiers of the same type (i.e. `**`, `//` etc.)
+//!  should be instantly "disqualified" and parsed as raw text in /all/ circumstances
+//!  and without any exceptions. TODO: []
+//!
+//! Their name should be rather self-explanatory - both the opening and closing modifier
+//! are _attached_ to one another.
+//!
+//! The following attached modifiers exist and have respective meaning:
+//!
+//!  1)  *bold*      
+//!  2)  /italic/      
+//!  3)  _underline_ 
+//!  4)  -strike-through- 
+//!  5)  !spoiler! 
+//!  6)  ^superscript^  (cannot be nested into `subscript`) 
+//!  7)  ,subscript,  (cannot be nested into `superscript`) 
+//!  8)  `inline code`  (disables any nested markup - verbatim) 
+//!  9)  `%null modifier%` 
+//! 10)  $f(x) = y$ `inline math`  (verbatim) 
+//! 11)  &variable&  (verbatim) 
 
 use std::collections::HashMap;
 
 use super::*;
 
-const DELIMITER_PAIR: [SyntaxKind; 12] = [
+pub const DELIMITER_PAIR: [SyntaxKind; 12] = [
     SyntaxKind::Asterisk,
     SyntaxKind::Slash,
     SyntaxKind::Underscore,
@@ -22,50 +64,43 @@ const DELIMITER_PAIR: [SyntaxKind; 12] = [
 const SPAN_HINT: &str = r#"can only span at maximum a single `paragraph`,
 i.e. they get terminated as soon as they encounter a `paragraph break`."#;
 
+// # Rules
+//
+//  - An opening modifier may only be preceded by whitespace or punctuation
+//    ie, prev token must not be a word
+//  - An opening modifier may _NOT_ be succeeded by whitespace
 fn is_valid_op_delimeter(p: &mut Parser) -> bool {
-    // - condition 1: An opening modifier may only be preceded by [whitespace] or [punctuation]
     let prev_no_word = p.prev().filter(|k| *k != T![Word]).is_some();
-    // - condition 2: An opening modifier may _NOT_ be succeeded by [whitespace]
     let next_no_white_sp = p.next().filter(|k| *k != T![WhiteSpace]).is_some();
     matches!((prev_no_word, next_no_white_sp), (true, true))
 }
 
+// # Rules
+//
+//  - A closing modifier may _NOT_ be preceded by whitespace
+//  - A closing modifier may only be succeeded by whitespace or punctuation
+//    ie, next token must not be a word
 fn is_valid_cl_delimeter(p: &mut Parser) -> bool {
-    // - condition 1: A closing modifier may _NOT_ be preceded by [whitespace]
     let prev_no_white_sp = p.prev().filter(|k| *k != T![WhiteSpace]).is_some();
-    // - condition 2: A closing modifier may only be succeeded by [whitespace] or [punctuation]
     let next_no_word = p.next().filter(|k| *k != T![Word]).is_some();
     matches!((next_no_word, prev_no_white_sp), (true, true))
 }
 
-/// [  ][punctuation char][  ]
-///  ^                     ^  
-///  both prev and next are word
-fn is_word(p: &mut Parser) -> bool {
+///   [  ][punctuation char][  ]
+///    ^          ^          ^  
+///  word <<current token>> word
+///
+///  both prev and next token are word
+fn is_surrounded_by_word(p: &mut Parser) -> bool {
     let prev = p.prev().filter(|k| *k == T![Word]).is_some();
     let next = p.next().filter(|k| *k == T![Word]).is_some();
     matches!((next, prev), (true, true))
 }
 
-/// Their name should be rather self-explanatory - both the opening and closing modifier
-/// are _attached_ to one another.
-///
-/// The following attached modifiers exist and have respective meaning:
-///
-/// - *bold*      - 1
-/// - /italic/      - 2
-/// - _underline_ - 3
-/// - -strike-through- - 4
-/// - !spoiler! - 5
-/// - ^superscript^ (cannot be nested into `subscript`) - 6
-/// - ,subscript, (cannot be nested into `superscript`) -7
-/// - `inline code` (disables any nested markup - verbatim) -8
-/// - `%null modifier%` -9
-/// - $f(x) = y$ (verbatim) -10
-/// - &variable& (verbatim) -11
+
 #[track_caller]
 pub(super) fn parse_attached_modifiers(p: &mut Parser) {
-    match is_word(p) {
+    match is_surrounded_by_word(p) {
         true => {
             p.covert_and_eat(T![Word]);
         }
@@ -109,7 +144,7 @@ fn parse_delimetered(
     kind: SyntaxKind,
     deli_stack: &mut HashMap<SyntaxKind, usize>,
 ) {
-    if is_word(p) {
+    if is_surrounded_by_word(p) {
         p.eat();
     }
     deli_stack.insert(kind, p.cursor);
@@ -139,12 +174,13 @@ fn parse_delimetered(
 
     match prev_token {
         false if p.cursor != 0 => {
-            if let Some(n) = p.nodes.last_mut() {
-                if n.kind() != SyntaxKind::WhiteSpace {
-                    n.unexpected_with_hint(format!(
-                        "An opening modifier may only be preceded by `whitespace` or `punctuation`"
-                    ));
-                }
+            if let Some(n) = p.nodes.last_mut()
+                && n.kind() != SyntaxKind::WhiteSpace
+            {
+                n.unexpected_with_hint(
+                    "An opening modifier may only be preceded by `whitespace` or `punctuation`"
+                        .to_string(),
+                );
             }
         }
         _ => {} // is at allowed token so skip
@@ -199,12 +235,11 @@ fn parse_delimetered(
     }
 
     // == closing delimiter ==
-    if trimmed {
-        if let Some(n) = p.nodes.last_mut() {
-            if n.kind() == SyntaxKind::WhiteSpace {
-                n.unexpected(); // set the `WhiteSpace` before closing modifiers as unexpected
-            }
-        }
+    if trimmed
+        && let Some(n) = p.nodes.last_mut()
+        && n.kind() == SyntaxKind::WhiteSpace
+    {
+        n.unexpected(); // set the `WhiteSpace` before closing modifiers as unexpected
     }
 
     p.expect_closing_delimiter(m, kind); // eat the closing modifier.
