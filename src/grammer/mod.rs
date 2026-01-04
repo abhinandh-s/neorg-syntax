@@ -158,7 +158,7 @@ fn linkable(p: &mut Parser) {
     p.eat_until(syntax_set!(Eof, LineEnding, ParaBreak, RCurly));
     p.expect_closing_delimiter(m, current.corresponding_pair_unchecked());
     let current = p.current();
-    p.expect(T![RSquare]);
+    p.expect(T![LSquare]);
     p.eat_until(syntax_set!(Eof, LineEnding, ParaBreak, RSquare));
     p.expect_closing_delimiter(m, current.corresponding_pair_unchecked());
     p.wrap(m, SyntaxKind::Link);
