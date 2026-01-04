@@ -9,9 +9,9 @@ fn main() {
 
     let source = r##"** This is a heading
 
-thid id *bold* and this is /italic/ _underline_
+thid ***id *bold* and this is /italic/ _underline_
 this is -strike-
-
+this is %incomplete
 ds
 
 this *s

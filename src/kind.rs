@@ -100,6 +100,15 @@ impl SyntaxKind {
         }
     }
 
+    //  `inline code`  (disables any nested markup - verbatim)
+    //  $f(x) = y$ `inline math`  (verbatim)
+    //  &variable&  (verbatim)
+    pub const fn is_verbatim(&self) -> bool {
+        matches!(
+            self,
+            SyntaxKind::Backtick | SyntaxKind::Dollar | SyntaxKind::Ampersand
+        )
+    }
     pub const fn is_inline_expr(&self) -> bool {
         matches!(
             self,

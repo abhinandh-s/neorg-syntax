@@ -1,4 +1,4 @@
-//! # Attached Modifiers
+//! # Attached Modifiers [line 1046 of official spec]
 //!  
 //!  This section discusses attached modifiers (which originally gave rise to
 //!  the name of [detached modifiers] as their natural counter-parts).
@@ -32,17 +32,20 @@
 //!
 //!  1)  *bold*      
 //!  2)  /italic/      
-//!  3)  _underline_ 
-//!  4)  -strike-through- 
-//!  5)  !spoiler! 
-//!  6)  ^superscript^  (cannot be nested into `subscript`) 
-//!  7)  ,subscript,  (cannot be nested into `superscript`) 
-//!  8)  `inline code`  (disables any nested markup - verbatim) 
-//!  9)  `%null modifier%` 
-//! 10)  $f(x) = y$ `inline math`  (verbatim) 
-//! 11)  &variable&  (verbatim) 
-
-use std::collections::HashMap;
+//!  3)  _underline_
+//!  4)  -strike-through-
+//!  5)  !spoiler!
+//!  6)  ^superscript^  (cannot be nested into `subscript`)
+//!  7)  ,subscript,  (cannot be nested into `superscript`)
+//!  8)  `inline code`  (disables any nested markup - verbatim)
+//!  9)  `%null modifier%`
+//! 10)  $f(x) = y$ `inline math`  (verbatim)
+//! 11)  &variable&  (verbatim)
+//!
+//! ## Strategy
+//!
+//! 01) ignore punctuations surrounded by word `ignore_this`
+//! 02) ensure there is no Two or more consecutive attached modifiers of the same type.
 
 use super::*;
 
@@ -97,154 +100,60 @@ fn is_surrounded_by_word(p: &mut Parser) -> bool {
     matches!((next, prev), (true, true))
 }
 
+/// # Rule
+///
+///  Two or more consecutive attached modifiers of the same type (i.e. `**`, `//` etc.)
+///  should be instantly "disqualified" and parsed as raw text in all circumstances
+///  and without any exceptions.
+///
+///  job is to only check it not consume it
+fn is_valid_delimeter(p: &mut Parser) -> bool {
+    let current = p.current();
+    let next = p.next();
+    Some(current) != next
+}
 
-#[track_caller]
+/// ## New
 pub(super) fn parse_attached_modifiers(p: &mut Parser) {
-    match is_surrounded_by_word(p) {
-        true => {
-            p.covert_and_eat(T![Word]);
-        }
-        false => {
-            match is_valid_op_delimeter(p) {
-                true => {
-                    let mut deli_stack: HashMap<SyntaxKind, usize> = HashMap::new();
-
-                    let kind = p.current();
-                    if DELIMITER_PAIR.contains(&kind) {
-                        parse_delimetered(p, kind, &mut deli_stack);
-                    }
-                }
-                false => p.unexpected(), // with hint later
-            }
-        }
-    }
-}
-
-fn parse_verbatim_block(p: &mut Parser) {
-    while !p.at_set(syntax_set!(Eof, Pipe, ParaBreak)) {
-        p.eat()
-    }
-}
-
-// # Attached Modifiers
-//
-// Attached modifiers encapsulate some text within a [paragraph] and change
-// the way it is displayed in the document.
-// An attached modifier consists of two parts:
-//  - the opening modifier
-//  - the closing modifier
-//
-// Below are the general rules for attached modifiers:
-// - An opening modifier may only be preceded by [whitespace] or [punctuation]
-// - An opening modifier may _NOT_ be succeeded by [whitespace]
-// - A closing modifier may _NOT_ be preceded by [whitespace]
-// - A closing modifier may only be succeeded by [whitespace] or [punctuation]
-fn parse_delimetered(
-    p: &mut Parser,
-    kind: SyntaxKind,
-    deli_stack: &mut HashMap<SyntaxKind, usize>,
-) {
-    if is_surrounded_by_word(p) {
-        p.eat();
-    }
-    deli_stack.insert(kind, p.cursor);
-    println!(
-        ">> entered parse_delimetered for parsing {} at {}",
-        kind, p.cursor
-    );
-
-    println!("{deli_stack:#?}");
-
-    let trimmed = !matches!(kind, T![Pipe] | T![InlineMath] | T![InlineCode]);
-    let _nestable = !matches!(kind, T![Caret] | T![Comma]);
-    let result = kind.as_attached_modifers_unchecked();
-
-    let prev_token_cond = |k: SyntaxKind| !matches!(k, | SyntaxKind::Word);
-
-    // let is_closing_delimiter = |k: SyntaxKind| {
-    //     match p.next() {
-    //         Some(k) => k == SyntaxKind,
-    //         None => true,
-    //     }
-    // };
-
+    let delimiter_kind = p.current();
+    let modifier_kind = delimiter_kind.as_attached_modifers_unchecked();
     let m = p.start();
-    // == opening delimiter ==
-    let prev_token = p.prev().filter(|k| prev_token_cond(*k)).is_some();
 
-    match prev_token {
-        false if p.cursor != 0 => {
-            if let Some(n) = p.nodes.last_mut()
-                && n.kind() != SyntaxKind::WhiteSpace
-            {
-                n.unexpected_with_hint(
-                    "An opening modifier may only be preceded by `whitespace` or `punctuation`"
-                        .to_string(),
-                );
-            }
-        }
-        _ => {} // is at allowed token so skip
-    }
-    p.bump(kind);
-
-    if p.at(T![WhiteSpace]) && trimmed {
-        p.unexpected_with_hint(format!(
-            "`{result}` should not start with `whitespace`\nconsider removing the `whitespace`"
-        ));
-    } else if p.at(kind) {
-        p.unexpected_with_hint(format!(
-            "a single `{}` is nessessary\nconsider removing redundant `{}`",
-            kind.text(),
-            kind.text()
-        ));
-    }
-
-    // == content ==
-    if kind == SyntaxKind::Pipe {
-        parse_verbatim_block(p);
-    } else {
-        while !p.is_at_eof() {
-            match p.current() {
-                // current is `Slash` & next is an ATTACHED_MODIFIERS or WhiteSpace or Eof
-                SyntaxKind::ParaBreak => {
-                    p.unexpected_with_hint(format!("{result} {SPAN_HINT}"));
-                    p.recover_until(kind);
-                    return;
-                }
-                SyntaxKind::Eof => break,
-                SyntaxKind::Pipe => {
-                    println!("mathed pipe at {}", p.cursor);
-                    if deli_stack.get(&SyntaxKind::Pipe).is_none() {
-                        parse_delimetered(p, SyntaxKind::Pipe, deli_stack);
+    // `ignore_this`
+    match is_surrounded_by_word(p) {
+        false => {
+            // ignore `******` this
+            match is_valid_delimeter(p) {
+                true if is_valid_op_delimeter(p) => {
+                    match delimiter_kind.is_verbatim() {
+                        true => {
+                            p.eat_until(syntax_set!(ParaBreak, LineEnding).add(delimiter_kind));
+                        }
+                        false => {
+                            p.eat();
+                            // TODO: we should add other inline elements in `linkable` here
+                            let set = ATTACHED_MODIFIERS.add(T![ParaBreak]).add(T![LineEnding]);
+                            p.eat_until(set);
+                        }
+                    }
+                    if is_valid_cl_delimeter(p) {
+                        p.eat();
+                        p.wrap(m, modifier_kind);
+                    } else if p.current().is_punctuation() {
+                        parse_attached_modifiers(p);
                     } else {
-                        break;
+                        p.expect_closing_delimiter(m, delimiter_kind);
                     }
                 }
-                k if ATTACHED_MODIFIERS.contains(k) => {
-                    if kind == k {
-                        break;
-                    } else if deli_stack.get(&k).is_some() {
-                        parse_delimetered(p, k, deli_stack);
-                    } else {
-                        break;
+                _ => {
+                    while p.current() == delimiter_kind {
+                        p.covert_and_eat(T![Word]);
                     }
                 }
-                _ => p.eat(),
             }
         }
+        true => p.covert_and_eat(T![Word]),
     }
-
-    // == closing delimiter ==
-    if trimmed
-        && let Some(n) = p.nodes.last_mut()
-        && n.kind() == SyntaxKind::WhiteSpace
-    {
-        n.unexpected(); // set the `WhiteSpace` before closing modifiers as unexpected
-    }
-
-    p.expect_closing_delimiter(m, kind); // eat the closing modifier.
-    p.wrap(m, result);
-    deli_stack.remove(&kind);
 }
 
 assert_tree!(
