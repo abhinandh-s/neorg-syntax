@@ -864,6 +864,13 @@ impl SyntaxNode {
                     SyntaxKind::Italics => *token_type = legend_pos("neorg.italic"),
                     SyntaxKind::UnderLine => *token_type = legend_pos("neorg.underline"),
                     SyntaxKind::StrikeThrough => *token_type = legend_pos("neorg.strikethrough"),
+                    SyntaxKind::Spoiler => *token_type = legend_pos("neorg.spoiler"),
+                    SyntaxKind::Superscript => *token_type = legend_pos("neorg.superscript"),
+                    SyntaxKind::Subscript => *token_type = legend_pos("neorg.subscript"),
+                    SyntaxKind::InlineCode => *token_type = legend_pos("neorg.inlinecode"),
+                    SyntaxKind::NullModifier => *token_type = legend_pos("neorg.nullmodifier"),
+                    SyntaxKind::InlineMath => *token_type = legend_pos("neorg.inlinemath"),
+                    SyntaxKind::Variable => *token_type = legend_pos("neorg.variable"),
                     _ => (),
                 }
                 for i in &inner_node.children {

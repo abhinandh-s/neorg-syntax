@@ -1,5 +1,6 @@
 pub(crate) mod errors;
 
+mod fmt;
 mod grammer;
 #[cfg(feature = "tower-lsp")]
 mod highlight;
@@ -9,16 +10,15 @@ mod node;
 mod parser;
 mod set;
 mod span;
-mod fmt;
 
 pub use grammer::*;
+pub use highlight::*;
 pub use kind::*;
 pub use lex::*;
 pub use node::*;
 pub use parser::*;
 pub use set::*;
 pub use span::*;
-pub use highlight::*;
 
 #[macro_export]
 macro_rules! hl {
@@ -32,9 +32,7 @@ macro_rules! hl {
 
 #[macro_export]
 macro_rules! cst {
-    ($source:expr) => ({
-        $crate::document(&mut $crate::Parser::new($source))
-    })
+    ($source:expr) => {{ $crate::document(&mut $crate::Parser::new($source)) }};
 }
 
 /// If an Operation in this while loop took more than 1 second it will panic

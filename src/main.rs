@@ -7,17 +7,22 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let source = r##"** This is a heading
+    let source = r##"
+** this is
 
-thid ***id *bold* and this is /italic/ _underline_
-this is -strike-
-this is %incomplete
-ds
+15:15:47his is *this is somethi
 
-this *s
+> this is 
+
+.56%^$%^$%^%#$!
 
 
-** This is a heading"##;
+sdasda
+
+
+
+
+"##;
 
     println!("{}", cst!(source).display());
 

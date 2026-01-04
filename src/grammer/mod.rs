@@ -68,46 +68,10 @@ fn paragraph_segment(p: &mut Parser) {
                 break;
             }
             SyntaxKind::ParaBreak => break,
-            a if DELIMITER_PAIR.contains(&a) => {
-                //   if let Some(t) = p.next() {
-                //     let state = t == a;
-                //   if state {
-                //     while p.current() == a {
-                //       p.covert_and_eat(T![Word]);
-                // }
-                //           }
-                //     } else {
-                parse_attached_modifiers(p)
-                //   }
-            }
+            any if DELIMITER_PAIR.contains(&any) => parse_attached_modifiers(p),
             _ => p.eat(),
         }
     }
-    // while !p.at_set(syntax_set!(Eof, LineEnding, ParaBreak)) {
-    //     let last_cursor = p.cursor;
-    //     match p.current() {
-    //         SyntaxKind::LCurly => p.eat(),
-    //         other if ATTACHED_MODIFIERS.contains(other) => {
-    //             paragraph_element(p);
-    //         }
-    //         _ => p.eat(),
-    //     }
-    //     p.assert_movement(last_cursor);
-    // }
-    // match p.is_at_eof() {
-    //     true if p.current() == SyntaxKind::Eof => p.eat(),
-    //     true => {}
-    //     false => {
-    //         let kind = p.current();
-    //         match kind {
-    //             SyntaxKind::LineEnding | SyntaxKind::ParaBreak => {
-    //                 eat_breaks(p);
-    //             }
-    //             _ => p.unexpected(),
-    //         }
-    //         p.bump_line();
-    //     }
-    // }
     p.wrap(m, T![ParaSegment]);
 }
 

@@ -45,7 +45,11 @@
 //! ## Strategy
 //!
 //! 01) ignore punctuations surrounded by word `ignore_this`
-//! 02) ensure there is no Two or more consecutive attached modifiers of the same type.
+//! 02) ensure there is no two or more consecutive attached modifiers of the same type.
+//! 03) ensure its a valid op delimeter
+//! 04) is it a verbatim or not, parse accrodingly
+//! 05) ensure its a valid cl delimeter  
+//! 06) wrap
 
 use super::*;
 
@@ -113,7 +117,6 @@ fn is_valid_delimeter(p: &mut Parser) -> bool {
     Some(current) != next
 }
 
-/// ## New
 pub(super) fn parse_attached_modifiers(p: &mut Parser) {
     let delimiter_kind = p.current();
     let modifier_kind = delimiter_kind.as_attached_modifers_unchecked();
@@ -137,7 +140,7 @@ pub(super) fn parse_attached_modifiers(p: &mut Parser) {
                         }
                     }
                     if is_valid_cl_delimeter(p) {
-                        p.eat();
+                        p.expect_closing_delimiter(m, delimiter_kind);
                         p.wrap(m, modifier_kind);
                     } else if p.current().is_punctuation() {
                         parse_attached_modifiers(p);

@@ -22,11 +22,18 @@ macro_rules! SemanticTokenTypes {
 }
 
 SemanticTokenTypes! {
-    "neorg.text",    // 00
-    "neorg.heading", // 01
-    "neorg.quote",   // 02
-    "neorg.bold",    // 04
-    "neorg.italic", // 04
-    "neorg.underline", // 04
-                      "neorg.strikethrough" //
+    "neorg.text",
+    "neorg.heading",
+    "neorg.quote",
+    "neorg.bold",
+    "neorg.italic",
+    "neorg.underline",
+    "neorg.strikethrough",
+    "neorg.spoiler",
+    "neorg.superscript",
+    "neorg.subscript",
+    "neorg.inlinecode",
+    "neorg.nullmodifier",
+    "neorg.inlinemath",
+    "neorg.variable",
 }

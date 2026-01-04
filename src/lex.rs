@@ -723,7 +723,7 @@ fn lex_line_or_para_ending(chars: &mut Peekable<Chars<'_>>) -> Option<Token> {
         if line_ending(chars, &mut text, &mut len) {
             kind = SyntaxKind::ParaBreak;
 
-          //  while line_ending(chars, &mut text, &mut len) {}
+            //  while line_ending(chars, &mut text, &mut len) {}
         }
     } else {
         return None;
