@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 3e06157df652cb307f769337868899d0eee48a5e3510f337db550787380dd2ba # shrinks to input = "$A|\0"
+cc 8e8682cd72aebf3f81f957af9a59e6e9bbfa911eb94e08fa70fe619fe8b6eb1e # shrinks to input = ""

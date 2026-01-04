@@ -68,9 +68,6 @@ pub const DELIMITER_PAIR: [SyntaxKind; 12] = [
     SyntaxKind::Pipe,
 ];
 
-const SPAN_HINT: &str = r#"can only span at maximum a single `paragraph`,
-i.e. they get terminated as soon as they encounter a `paragraph break`."#;
-
 // # Rules
 //
 //  - An opening modifier may only be preceded by whitespace or punctuation
@@ -129,23 +126,39 @@ pub(super) fn parse_attached_modifiers(p: &mut Parser) {
             match is_valid_delimeter(p) {
                 true if is_valid_op_delimeter(p) => {
                     match delimiter_kind.is_verbatim() {
+                        // verbatim [checked mannauly] write test
                         true => {
-                            p.eat_until(syntax_set!(ParaBreak, LineEnding).add(delimiter_kind));
+                            p.eat();
+                            while !p.at_set(syntax_set!(ParaBreak, LineEnding).add(delimiter_kind))
+                            {
+                                p.covert_and_eat(T![Word]);
+                            }
                         }
                         false => {
                             p.eat();
                             // TODO: we should add other inline elements in `linkable` here
                             let set = ATTACHED_MODIFIERS.add(T![ParaBreak]).add(T![LineEnding]);
-                            p.eat_until(set);
+                            while !p.is_at_eof() {
+                                p.eat_until(set);
+                                if p.current() == delimiter_kind {
+                                    break;
+                                } else if p.at_set(syntax_set!(Eof, ParaBreak, LineEnding)) {
+                                    p.expect_closing_delimiter(m, delimiter_kind);
+                                    return;
+                                } else {
+                                    parse_attached_modifiers(p);
+                                }
+                            }
                         }
                     }
-                    if is_valid_cl_delimeter(p) {
-                        p.expect_closing_delimiter(m, delimiter_kind);
-                        p.wrap(m, modifier_kind);
-                    } else if p.current().is_punctuation() {
-                        parse_attached_modifiers(p);
-                    } else {
-                        p.expect_closing_delimiter(m, delimiter_kind);
+
+                    if p.current() == delimiter_kind {
+                        if is_valid_cl_delimeter(p) {
+                            p.eat();
+                            p.wrap(m, modifier_kind);
+                        } else {
+                            p.expect_closing_delimiter(m, modifier_kind);
+                        }
                     }
                 }
                 _ => {
@@ -281,7 +294,7 @@ mod test {
         #[test]
         fn no_panic_prop(input in ".*") {
             let mut parser = crate::Parser::new(&input);
-            super::parse_attached_modifiers(&mut parser);
+            super::document(&mut parser);
         }
     }
 }

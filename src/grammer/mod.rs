@@ -68,6 +68,7 @@ fn paragraph_segment(p: &mut Parser) {
                 break;
             }
             SyntaxKind::ParaBreak => break,
+            SyntaxKind::LCurly => linkable(p),
             any if DELIMITER_PAIR.contains(&any) => parse_attached_modifiers(p),
             _ => p.eat(),
         }
@@ -146,4 +147,19 @@ fn heading(p: &mut Parser) {
     p.expect(T![WhiteSpace]);
     p.eat_until(syntax_set!(LineEnding, ParaBreak));
     p.wrap(m, SyntaxKind::Heading);
+}
+
+fn linkable(p: &mut Parser) {
+    // {./README.md}[readme]
+    let m = p.start();
+
+    let current = p.current();
+    p.eat(); // `{`
+    p.eat_until(syntax_set!(Eof, LineEnding, ParaBreak, RCurly));
+    p.expect_closing_delimiter(m, current.corresponding_pair_unchecked());
+    let current = p.current();
+    p.expect(T![RSquare]);
+    p.eat_until(syntax_set!(Eof, LineEnding, ParaBreak, RSquare));
+    p.expect_closing_delimiter(m, current.corresponding_pair_unchecked());
+    p.wrap(m, SyntaxKind::Link);
 }

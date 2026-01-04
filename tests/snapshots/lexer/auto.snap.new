@@ -1,5 +1,6 @@
 ---
 source: src/lex.rs
+assertion_line: 896
 expression: tokens
 ---
 [

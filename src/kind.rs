@@ -100,13 +100,25 @@ impl SyntaxKind {
         }
     }
 
+    pub fn corresponding_pair_unchecked(&self) -> Self {
+        match self {
+            SyntaxKind::LCurly => SyntaxKind::RCurly,
+            SyntaxKind::RCurly => SyntaxKind::LCurly,
+            SyntaxKind::LSquare => SyntaxKind::RSquare,
+            SyntaxKind::RSquare => SyntaxKind::LSquare,
+            SyntaxKind::LParen => SyntaxKind::RParen,
+            SyntaxKind::RParen => SyntaxKind::LParen,
+            _ => panic!("the syntax kind `{self}` does not have a corresponding pair"),
+        }
+    }
+
     //  `inline code`  (disables any nested markup - verbatim)
     //  $f(x) = y$ `inline math`  (verbatim)
     //  &variable&  (verbatim)
     pub const fn is_verbatim(&self) -> bool {
         matches!(
             self,
-            SyntaxKind::Backtick | SyntaxKind::Dollar | SyntaxKind::Ampersand
+            SyntaxKind::Backtick | SyntaxKind::Dollar | SyntaxKind::Percent
         )
     }
     pub const fn is_inline_expr(&self) -> bool {
@@ -132,7 +144,7 @@ impl SyntaxKind {
             SyntaxKind::Underscore => Some(SyntaxKind::UnderLine),
             SyntaxKind::Exclamation => Some(SyntaxKind::Spoiler),
             SyntaxKind::Caret => Some(SyntaxKind::Superscript),
-            SyntaxKind::Comma => Some(SyntaxKind::Comma),
+            SyntaxKind::Comma => Some(SyntaxKind::Subscript),
             SyntaxKind::Backtick => Some(SyntaxKind::InlineCode),
             SyntaxKind::Percent => Some(SyntaxKind::NullModifier),
             SyntaxKind::Dollar => Some(SyntaxKind::Maths),
@@ -150,7 +162,7 @@ impl SyntaxKind {
             SyntaxKind::Underscore => SyntaxKind::UnderLine,
             SyntaxKind::Exclamation => SyntaxKind::Spoiler,
             SyntaxKind::Caret => SyntaxKind::Superscript,
-            SyntaxKind::Comma => SyntaxKind::Comma,
+            SyntaxKind::Comma => SyntaxKind::Subscript,
             SyntaxKind::Backtick => SyntaxKind::InlineCode,
             SyntaxKind::Percent => SyntaxKind::NullModifier,
             SyntaxKind::Dollar => SyntaxKind::Maths,

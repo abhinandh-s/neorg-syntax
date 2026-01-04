@@ -1,6 +1,6 @@
 ---
 source: src/grammer/am.rs
-assertion_line: 295
+assertion_line: 242
 expression: output
 ---
-Error: "/" (unexpected /) [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
+Word: "/" [ offsets: 0, position: ( line: 0, col: 0 ) ] ]
